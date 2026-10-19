@@ -3,9 +3,9 @@
 - Use: Contains unit tests for text reader behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills.document_processing,
-  openagentlab.skills.document_processing.tools.text_reader, and
-  openagentlab.skills.tool.
+- Depends on: Project modules: rastin_ai.skills.document_processing,
+  rastin_ai.skills.document_processing.tools.text_reader, and
+  rastin_ai.skills.tool.
 """
 
 import json
@@ -14,14 +14,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.text_reader import (
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.text_reader import (
     TextReaderError,
     TextReaderInput,
     TextReaderOutput,
     TextReaderTool,
 )
-from openagentlab.skills.tool import BaseTool
+from rastin_ai.skills.tool import BaseTool
 
 
 def write_text(path: Path, content: str, encoding: str = "utf-8") -> None:

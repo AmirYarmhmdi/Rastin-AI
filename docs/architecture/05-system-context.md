@@ -1,6 +1,6 @@
 # System Context
 
-> This document defines the external environment of OpenAgentLab.
+> This document defines the external environment of Rastin-AI.
 >
 > It identifies the primary users, external systems, and services that interact with the platform while intentionally avoiding internal implementation details.
 >
@@ -26,7 +26,7 @@
 
 # Purpose
 
-OpenAgentLab enables knowledge workers to analyze heterogeneous information sources using AI-assisted analytical workflows.
+Rastin-AI enables knowledge workers to analyze heterogeneous information sources using AI-assisted analytical workflows.
 
 The platform acts as an orchestration layer between users, Large Language Models, deterministic tools, vector retrieval, and structured storage.
 
@@ -84,7 +84,7 @@ Provides language model capabilities including:
 
 Interaction
 
-OpenAgentLab sends structured prompts and receives model responses.
+Rastin-AI sends structured prompts and receives model responses.
 
 ---
 
@@ -176,7 +176,7 @@ Future versions may support Kubernetes deployment.
 
 # System Boundary
 
-OpenAgentLab is responsible for:
+Rastin-AI is responsible for:
 
 - document ingestion
 - structured data ingestion
@@ -186,7 +186,7 @@ OpenAgentLab is responsible for:
 - report generation
 - execution trace
 
-OpenAgentLab is NOT responsible for:
+Rastin-AI is NOT responsible for:
 
 - training language models
 - fine-tuning foundation models
@@ -207,7 +207,7 @@ Upload PDF / Excel / CSV
 
 ↓
 
-OpenAgentLab
+Rastin-AI
 
 ↓
 

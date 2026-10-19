@@ -4,22 +4,22 @@
 - Usage: Run this file with pytest when checking tool execution authorization.
 - Duties: Proves selectors cannot bypass registry and schema validation.
 - Depends on: External packages: pydantic. Project modules:
-  openagentlab.agent.graph, openagentlab.agent.schemas, and
-  openagentlab.tools.registry.
+  rastin_ai.agent.graph, rastin_ai.agent.schemas, and
+  rastin_ai.tools.registry.
 """
 
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from openagentlab.agent.graph import create_agent_graph
-from openagentlab.agent.schemas import (
+from rastin_ai.agent.graph import create_agent_graph
+from rastin_ai.agent.schemas import (
     ExecutionPlan,
     ExecutionTask,
     LiteralArgument,
     ToolSelection,
 )
-from openagentlab.tools.registry import list_tools, register_tool
+from rastin_ai.tools.registry import list_tools, register_tool
 
 
 class ExpressionArguments(BaseModel):

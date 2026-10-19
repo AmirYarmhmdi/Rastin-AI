@@ -4,20 +4,20 @@
 - Usage: Run this file with pytest when checking plan validation behavior.
 - Duties: Builds test Skill registries and validates structured plans.
 - Depends on: External packages: pydantic. Project modules:
-  openagentlab.agent.plan_validation, openagentlab.agent.schemas, and
-  openagentlab.skills.
+  rastin_ai.agent.plan_validation, rastin_ai.agent.schemas, and
+  rastin_ai.skills.
 """
 
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from openagentlab.agent.plan_validation import (
+from rastin_ai.agent.plan_validation import (
     ExecutionPlanValidationError,
     ExecutionPlanValidator,
 )
-from openagentlab.agent.schemas import ExecutionPlan, ExecutionTask, LiteralArgument
-from openagentlab.skills import BaseSkill, BaseTool, SkillMetadata
-from openagentlab.skills.registry import SkillRegistry
+from rastin_ai.agent.schemas import ExecutionPlan, ExecutionTask, LiteralArgument
+from rastin_ai.skills import BaseSkill, BaseTool, SkillMetadata
+from rastin_ai.skills.registry import SkillRegistry
 
 
 class CapabilityInput(BaseModel):

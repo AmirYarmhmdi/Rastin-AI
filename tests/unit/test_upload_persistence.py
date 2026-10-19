@@ -3,9 +3,9 @@
 - Use: Contains unit tests for upload persistence behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.database, openagentlab.database.engine,
-  openagentlab.database.session, openagentlab.repositories.documents,
-  openagentlab.services.upload, and 1 more.
+- Depends on: Project modules: rastin_ai.database, rastin_ai.database.engine,
+  rastin_ai.database.session, rastin_ai.repositories.documents,
+  rastin_ai.services.upload, and 1 more.
 """
 
 import asyncio
@@ -19,27 +19,27 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openagentlab.database import Base
-from openagentlab.database.engine import create_database_engine
-from openagentlab.database.enums import DocumentStatus, FileStorageStatus
-from openagentlab.database.models.document import Document
-from openagentlab.database.models.file_metadata import FileMetadata
-from openagentlab.database.models.user import User
-from openagentlab.database.session import create_session_factory
-from openagentlab.repositories.documents import SQLAlchemyDocumentRepository
-from openagentlab.services.upload import UploadInput, UploadService
-from openagentlab.storage.local import LocalStorageProvider
+from rastin_ai.database import Base
+from rastin_ai.database.engine import create_database_engine
+from rastin_ai.database.enums import DocumentStatus, FileStorageStatus
+from rastin_ai.database.models.document import Document
+from rastin_ai.database.models.file_metadata import FileMetadata
+from rastin_ai.database.models.user import User
+from rastin_ai.database.session import create_session_factory
+from rastin_ai.repositories.documents import SQLAlchemyDocumentRepository
+from rastin_ai.services.upload import UploadInput, UploadService
+from rastin_ai.storage.local import LocalStorageProvider
 
-TEST_DATABASE_URL = os.environ.get("OPENAGENTLAB_TEST_DATABASE_URL")
+TEST_DATABASE_URL = os.environ.get("RASTIN_AI_TEST_DATABASE_URL")
 USER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 
 
 def test_upload_persists_metadata_and_retrievable_binary_content(tmp_path) -> None:
     if not TEST_DATABASE_URL:
-        pytest.skip("OPENAGENTLAB_TEST_DATABASE_URL is required for persistence tests.")
+        pytest.skip("RASTIN_AI_TEST_DATABASE_URL is required for persistence tests.")
     if not is_safe_test_database_url(TEST_DATABASE_URL):
         pytest.skip(
-            "OPENAGENTLAB_TEST_DATABASE_URL must point to a database ending in _test.",
+            "RASTIN_AI_TEST_DATABASE_URL must point to a database ending in _test.",
         )
 
     asyncio.run(_run_upload_persistence_test(tmp_path))
@@ -61,15 +61,15 @@ def is_safe_test_database_url(database_url: str | None) -> bool:
     ("database_url", "expected"),
     (
         (
-            "postgresql+asyncpg://openagentlab:password@localhost/openagentlab_test",
+            "postgresql+asyncpg://rastin_ai:password@localhost/rastin_ai_test",
             True,
         ),
         (
-            "postgresql+asyncpg://openagentlab:password@localhost/openagentlab",
+            "postgresql+asyncpg://rastin_ai:password@localhost/rastin_ai",
             False,
         ),
         (
-            "postgresql+asyncpg://openagentlab:password@localhost/production",
+            "postgresql+asyncpg://rastin_ai:password@localhost/production",
             False,
         ),
         ("not a database url", False),

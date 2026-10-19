@@ -1,6 +1,6 @@
 # Tool Specification
 
-> This document defines the deterministic tools available to the OpenAgentLab agent.
+> This document defines the deterministic tools available to the Rastin-AI agent.
 >
 > Tools perform deterministic operations.
 >
@@ -513,7 +513,7 @@ Tools are not intelligent.
 
 They are reliable software components.
 
-The intelligence of OpenAgentLab emerges from the orchestration of deterministic tools rather than from the tools themselves.
+The intelligence of Rastin-AI emerges from the orchestration of deterministic tools rather than from the tools themselves.
 
 This separation enables:
 

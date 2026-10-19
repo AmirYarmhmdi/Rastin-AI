@@ -4,8 +4,8 @@
 - Usage: Alembic imports this file when creating or running migrations.
 - Duties: Defines do_run_migrations, run_async_migrations, run_migrations_offline,
   and run_migrations_online and related helper logic.
-- Depends on: Project modules: openagentlab.database, openagentlab.database.base,
-  and openagentlab.database.engine.
+- Depends on: Project modules: rastin_ai.database, rastin_ai.database.base,
+  and rastin_ai.database.engine.
 """
 
 from __future__ import annotations
@@ -17,9 +17,9 @@ from sqlalchemy import Connection, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-from openagentlab.database import models  # noqa: F401
-from openagentlab.database.base import Base
-from openagentlab.database.engine import get_database_url
+from rastin_ai.database import models  # noqa: F401
+from rastin_ai.database.base import Base
+from rastin_ai.database.engine import get_database_url
 
 config = context.config
 

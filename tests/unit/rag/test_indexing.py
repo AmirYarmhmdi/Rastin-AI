@@ -3,14 +3,14 @@
 - Use: Contains unit tests for indexing behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.indexing, and
-  openagentlab.rag.models.
+- Depends on: Project modules: rastin_ai.rag.indexing, and
+  rastin_ai.rag.models.
 """
 
 from pathlib import Path
 
-from openagentlab.rag.indexing import DocumentIndexer
-from openagentlab.rag.models import Chunk, Document
+from rastin_ai.rag.indexing import DocumentIndexer
+from rastin_ai.rag.models import Chunk, Document
 
 
 class FakeLoader:

@@ -3,9 +3,9 @@
 - Use: Contains unit tests for json reader behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills.document_processing,
-  openagentlab.skills.document_processing.tools.json_reader, and
-  openagentlab.skills.tool.
+- Depends on: Project modules: rastin_ai.skills.document_processing,
+  rastin_ai.skills.document_processing.tools.json_reader, and
+  rastin_ai.skills.tool.
 """
 
 import json
@@ -14,14 +14,14 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.json_reader import (
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.json_reader import (
     JSONReaderError,
     JSONReaderInput,
     JSONReaderOutput,
     JSONReaderTool,
 )
-from openagentlab.skills.tool import BaseTool
+from rastin_ai.skills.tool import BaseTool
 
 
 def write_json_text(path: Path, content: str, encoding: str = "utf-8") -> None:
@@ -45,14 +45,14 @@ def test_json_reader_tool_exposes_contract_metadata() -> None:
     ("value", "root_type", "item_count"),
     [
         ({}, "object", 0),
-        ({"name": "OpenAgentLab"}, "object", 1),
+        ({"name": "Rastin-AI"}, "object", 1),
         ({"a": 1, "b": {"c": True}, "d": None}, "object", 3),
         ([], "array", 0),
         ([1, 2, 3], "array", 3),
         (["x", 1, 2.5, True, False, None], "array", 6),
         ([[1], [2, 3]], "array", 2),
         ([{"name": "Alice"}, {"name": "Bob"}], "array", 2),
-        ("OpenAgentLab", "string", None),
+        ("Rastin-AI", "string", None),
         (42, "number", None),
         (12.5, "number", None),
         (True, "boolean", None),
@@ -122,7 +122,7 @@ def test_json_reader_preserves_array_order(tmp_path: Path) -> None:
 
 def test_json_reader_handles_unicode_keys_and_values(tmp_path: Path) -> None:
     path = tmp_path / "unicode.json"
-    value = {"نام": "OpenAgentLab", "city": "München", "emoji": "plain text"}
+    value = {"نام": "Rastin-AI", "city": "München", "emoji": "plain text"}
     write_json_value(path, value)
 
     result = JSONReaderTool().execute(JSONReaderInput(path=path))
@@ -209,15 +209,15 @@ def test_json_reader_validates_empty_encoding() -> None:
 
 def test_json_reader_output_serializes_cleanly(tmp_path: Path) -> None:
     path = tmp_path / "serializable.json"
-    write_json_value(path, {"items": [1, True, None, {"name": "OpenAgentLab"}]})
+    write_json_value(path, {"items": [1, True, None, {"name": "Rastin-AI"}]})
 
     result = JSONReaderTool().execute(JSONReaderInput(path=path))
     dumped = result.model_dump()
     encoded = json.loads(result.model_dump_json())
 
-    assert dumped["data"] == {"items": [1, True, None, {"name": "OpenAgentLab"}]}
+    assert dumped["data"] == {"items": [1, True, None, {"name": "Rastin-AI"}]}
     assert encoded["path"] == str(path)
-    assert encoded["data"] == {"items": [1, True, None, {"name": "OpenAgentLab"}]}
+    assert encoded["data"] == {"items": [1, True, None, {"name": "Rastin-AI"}]}
     assert "JSONDecoder" not in str(encoded)
 
 

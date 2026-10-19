@@ -1,5 +1,5 @@
 # File guide.
-# Use: Runs the local OpenAgentLab development stack.
+# Use: Runs the local Rastin-AI development stack.
 # Usage: Start it with docker compose from the repo root.
 # Duties: Defines app, database, Qdrant, Langfuse, and support services.
 # Depends on: Dockerfile, .env.example values, and application settings.
@@ -68,11 +68,11 @@ x-langfuse-worker-env: &langfuse-worker-env
   SMTP_CONNECTION_URL: ${SMTP_CONNECTION_URL:-}
 
 services:
-  openagentlab:
+  rastin-ai:
     build:
       context: .
       dockerfile: Dockerfile
-    image: openagentlab:local
+    image: rastin-ai:local
     restart: unless-stopped
     depends_on:
       postgres:
@@ -80,7 +80,7 @@ services:
       qdrant:
         condition: service_healthy
     environment:
-      APP_NAME: ${APP_NAME:-OpenAgentLab}
+      APP_NAME: ${APP_NAME:-Rastin-AI}
       APP_VERSION: ${APP_VERSION:-0.1.0}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-false}
@@ -88,15 +88,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       HOST: 0.0.0.0
       PORT: 8000
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-openagentlab}:${POSTGRES_PASSWORD:-openagentlab_dev_password}@postgres:5432/${POSTGRES_DB:-openagentlab}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rastin_ai}:${POSTGRES_PASSWORD:-rastin_ai_dev_password}@postgres:5432/${POSTGRES_DB:-rastin_ai}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       QDRANT_URL: http://qdrant:6333
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
-      QDRANT_COLLECTION_NAME: ${QDRANT_COLLECTION_NAME:-openagentlab_rag_chunks}
+      QDRANT_COLLECTION_NAME: ${QDRANT_COLLECTION_NAME:-rastin_ai_rag_chunks}
       OPENAI_PLANNER_MODEL: ${OPENAI_PLANNER_MODEL:-gpt-4o-mini}
       OPENAI_RESPONSE_MODEL: ${OPENAI_RESPONSE_MODEL:-gpt-4o-mini}
       OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
-      OPENAGENTLAB_TOOL_SELECTOR_MODEL: ${OPENAGENTLAB_TOOL_SELECTOR_MODEL:-gpt-4.1-mini}
+      RASTIN_AI_TOOL_SELECTOR_MODEL: ${RASTIN_AI_TOOL_SELECTOR_MODEL:-gpt-4.1-mini}
       RAG_EMBEDDING_DIMENSION: ${RAG_EMBEDDING_DIMENSION:-1536}
       RAG_CHUNK_SIZE: ${RAG_CHUNK_SIZE:-800}
       RAG_CHUNK_OVERLAP: ${RAG_CHUNK_OVERLAP:-100}
@@ -116,11 +116,11 @@ services:
       AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME:-}
       AZURE_STORAGE_MANAGED_IDENTITY_CLIENT_ID: ${AZURE_STORAGE_MANAGED_IDENTITY_CLIENT_ID:-}
     ports:
-      - "${COMPOSE_OPENAGENTLAB_BIND_HOST:-127.0.0.1}:${COMPOSE_OPENAGENTLAB_PORT:-8000}:8000"
+      - "${COMPOSE_RASTIN_AI_BIND_HOST:-127.0.0.1}:${COMPOSE_RASTIN_AI_PORT:-8000}:8000"
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     volumes:
-      - openagentlab_storage:/app/storage
+      - rastin_ai_storage:/app/storage
     healthcheck:
       test:
         [
@@ -138,15 +138,15 @@ services:
     image: docker.io/postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-openagentlab}
-      POSTGRES_USER: ${POSTGRES_USER:-openagentlab}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openagentlab_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-rastin_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-rastin_ai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rastin_ai_dev_password}
     ports:
       - "${COMPOSE_POSTGRES_BIND_HOST:-127.0.0.1}:${COMPOSE_POSTGRES_PORT:-5432}:5432"
     volumes:
-      - openagentlab_postgres_data:/var/lib/postgresql/data
+      - rastin_ai_postgres_data:/var/lib/postgresql/data
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -160,9 +160,9 @@ services:
       - "${COMPOSE_QDRANT_BIND_HOST:-127.0.0.1}:6333:6333"
       - "${COMPOSE_QDRANT_BIND_HOST:-127.0.0.1}:6334:6334"
     volumes:
-      - openagentlab_qdrant_data:/qdrant/storage
+      - rastin_ai_qdrant_data:/qdrant/storage
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test:
         [
@@ -180,7 +180,7 @@ services:
     depends_on: *langfuse-depends-on
     environment: *langfuse-worker-env
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test:
         [
@@ -214,7 +214,7 @@ services:
     ports:
       - "${COMPOSE_LANGFUSE_BIND_HOST:-127.0.0.1}:${COMPOSE_LANGFUSE_PORT:-3000}:3000"
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test:
         [
@@ -238,9 +238,9 @@ services:
       TZ: UTC
       PGTZ: UTC
     volumes:
-      - openagentlab_langfuse_postgres_data:/var/lib/postgresql/data
+      - rastin_ai_langfuse_postgres_data:/var/lib/postgresql/data
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s
@@ -256,10 +256,10 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-clickhouse}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse_dev_password}
     volumes:
-      - openagentlab_langfuse_clickhouse_data:/var/lib/clickhouse
-      - openagentlab_langfuse_clickhouse_logs:/var/log/clickhouse-server
+      - rastin_ai_langfuse_clickhouse_data:/var/lib/clickhouse
+      - rastin_ai_langfuse_clickhouse_logs:/var/log/clickhouse-server
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping || exit 1"]
       interval: 5s
@@ -276,9 +276,9 @@ services:
     environment:
       REDIS_AUTH: ${REDIS_AUTH:-redis_dev_password}
     volumes:
-      - openagentlab_langfuse_redis_data:/data
+      - rastin_ai_langfuse_redis_data:/data
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_AUTH}\" ping | grep PONG"]
       interval: 3s
@@ -297,9 +297,9 @@ services:
       - "${COMPOSE_MINIO_BIND_HOST:-127.0.0.1}:${COMPOSE_MINIO_PORT:-9090}:9000"
       - "${COMPOSE_MINIO_CONSOLE_BIND_HOST:-127.0.0.1}:${COMPOSE_MINIO_CONSOLE_PORT:-9091}:9001"
     volumes:
-      - openagentlab_langfuse_minio_data:/data
+      - rastin_ai_langfuse_minio_data:/data
     networks:
-      - openagentlab-network
+      - rastin-ai-network
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 1s
@@ -308,23 +308,23 @@ services:
       start_period: 1s
 
 networks:
-  openagentlab-network:
-    name: openagentlab-network
+  rastin-ai-network:
+    name: rastin-ai-network
 
 volumes:
-  openagentlab_postgres_data:
-    name: openagentlab_postgres_data
-  openagentlab_qdrant_data:
-    name: openagentlab_qdrant_data
-  openagentlab_storage:
-    name: openagentlab_storage
-  openagentlab_langfuse_postgres_data:
-    name: openagentlab_langfuse_postgres_data
-  openagentlab_langfuse_clickhouse_data:
-    name: openagentlab_langfuse_clickhouse_data
-  openagentlab_langfuse_clickhouse_logs:
-    name: openagentlab_langfuse_clickhouse_logs
-  openagentlab_langfuse_redis_data:
-    name: openagentlab_langfuse_redis_data
-  openagentlab_langfuse_minio_data:
-    name: openagentlab_langfuse_minio_data
+  rastin_ai_postgres_data:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_postgres_data
+  rastin_ai_qdrant_data:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_qdrant_data
+  rastin_ai_storage:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_storage
+  rastin_ai_langfuse_postgres_data:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_langfuse_postgres_data
+  rastin_ai_langfuse_clickhouse_data:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_langfuse_clickhouse_data
+  rastin_ai_langfuse_clickhouse_logs:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_langfuse_clickhouse_logs
+  rastin_ai_langfuse_redis_data:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_langfuse_redis_data
+  rastin_ai_langfuse_minio_data:
+    name: ${RASTIN_AI_VOLUME_PREFIX:-rastin_ai}_langfuse_minio_data

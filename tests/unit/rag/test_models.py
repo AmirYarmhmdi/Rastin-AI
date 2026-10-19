@@ -3,13 +3,13 @@
 - Use: Contains unit tests for models behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.models.
+- Depends on: Project modules: rastin_ai.rag.models.
 """
 
 import pytest
 from pydantic import ValidationError
 
-from openagentlab.rag.models import Chunk, Document, RetrievedChunk
+from rastin_ai.rag.models import Chunk, Document, RetrievedChunk
 
 
 def test_document_preserves_extensible_metadata() -> None:

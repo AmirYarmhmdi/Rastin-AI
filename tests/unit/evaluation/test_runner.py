@@ -3,20 +3,20 @@
 - Use: Tests evaluation runner orchestration.
 - Usage: Run with pytest tests/unit/evaluation/test_runner.py.
 - Duties: Verifies normalized aggregate results through a fake evaluator.
-- Depends on: Project modules: openagentlab.evaluation.
+- Depends on: Project modules: rastin_ai.evaluation.
 """
 
 from collections.abc import Sequence
 
 import pytest
 
-from openagentlab.evaluation.models import (
+from rastin_ai.evaluation.models import (
     EvaluationCase,
     EvaluationMetricResult,
     EvaluationRunResult,
 )
-from openagentlab.evaluation.runner import EvaluationRunner
-from openagentlab.evaluation.thresholds import EvaluationThresholds
+from rastin_ai.evaluation.runner import EvaluationRunner
+from rastin_ai.evaluation.thresholds import EvaluationThresholds
 
 
 class FakeEvaluator:

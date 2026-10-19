@@ -3,7 +3,7 @@
 - Use: Contains unit tests for question-answering service behavior.
 - Usage: Run this file with pytest when checking direct attachment context.
 - Duties: Uses fakes to verify attachment text can answer without vector retrieval.
-- Depends on: Project modules: openagentlab.services.questions.
+- Depends on: Project modules: rastin_ai.services.questions.
 """
 
 import asyncio
@@ -13,20 +13,21 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from openagentlab.database.enums import DocumentStatus, WorkflowExecutionStatus
-from openagentlab.rag.context.builder import ContextBuilder
-from openagentlab.rag.models import Chunk, Document, RetrievedChunk
-from openagentlab.repositories.workflow_execution import WorkflowExecutionRecord
-from openagentlab.services.documents import (
+from rastin_ai.database.enums import DocumentStatus, WorkflowExecutionStatus
+from rastin_ai.rag.context.builder import ContextBuilder
+from rastin_ai.rag.models import Chunk, Document, RetrievedChunk
+from rastin_ai.repositories.workflow_execution import WorkflowExecutionRecord
+from rastin_ai.services.documents import (
     DocumentNotFoundError,
     DocumentRecord,
     DocumentUpload,
 )
-from openagentlab.services.questions import (
+from rastin_ai.services.questions import (
     QUESTION_STATUS_INDEXING_FAILED,
     QUESTION_STATUS_INSUFFICIENT_EVIDENCE,
     QUESTION_STATUS_NO_EVIDENCE,
     QUESTION_STATUS_NOT_READY,
+    ProjectRetrievalScope,
     QuestionAttachment,
     QuestionInput,
     RAGQuestionAnsweringService,
@@ -36,6 +37,10 @@ DOCUMENT_ID = UUID("11111111-1111-4111-8111-111111111111")
 SECOND_DOCUMENT_ID = UUID("22222222-2222-4222-8222-222222222222")
 THIRD_DOCUMENT_ID = UUID("33333333-3333-4333-8333-333333333333")
 USER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+ORGANIZATION_ID = UUID("dddddddd-dddd-4ddd-8ddd-dddddddddddd")
+PROJECT_ID = UUID("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee")
+SESSION_ID = UUID("99999999-9999-4999-8999-999999999999")
+SECOND_SESSION_ID = UUID("88888888-8888-4888-8888-888888888888")
 NOW = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)
 
 
@@ -94,6 +99,49 @@ class FakeRetriever:
         return list(self.results_by_document_id.get(str(document_id), []))[:top_k]
 
 
+class ProjectScopeRetriever:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def retrieve(self, query: str, *, top_k: int = 5, filters=None, **kwargs):
+        _ = query
+        _ = top_k
+        _ = kwargs
+        self.calls.append(filters)
+        if filters == {
+            "organization_id": str(ORGANIZATION_ID),
+            "project_id": str(PROJECT_ID),
+            "document_scope": "PROJECT_LIBRARY",
+        }:
+            return [
+                _retrieved_chunk(
+                    document_id=str(DOCUMENT_ID),
+                    text="Project library says launch code is apollo.",
+                    filename="library.txt",
+                    metadata={"document_scope": "PROJECT_LIBRARY"},
+                )
+            ]
+        if filters == {
+            "organization_id": str(ORGANIZATION_ID),
+            "project_id": str(PROJECT_ID),
+            "document_scope": "CHAT_ATTACHMENT",
+            "session_id": str(SESSION_ID),
+        }:
+            return [
+                _retrieved_chunk(
+                    document_id=str(SECOND_DOCUMENT_ID),
+                    text="Attachment says launch code is artemis.",
+                    chunk_id="attachment-chunk",
+                    filename="chat.txt",
+                    metadata={
+                        "document_scope": "CHAT_ATTACHMENT",
+                        "session_id": str(SESSION_ID),
+                    },
+                )
+            ]
+        return []
+
+
 class FakeWorkflowRepository:
     def __init__(self) -> None:
         self.created: list[WorkflowExecutionRecord] = []
@@ -110,6 +158,8 @@ class FakeWorkflowRepository:
         status: WorkflowExecutionStatus = WorkflowExecutionStatus.PENDING,
         user_id: UUID,
         session_id: UUID | None = None,
+        organization_id: UUID | None = None,
+        project_id: UUID | None = None,
     ) -> WorkflowExecutionRecord:
         record = WorkflowExecutionRecord(
             user_id=user_id,
@@ -126,6 +176,8 @@ class FakeWorkflowRepository:
             finished_at=None,
             created_at=NOW,
             updated_at=NOW,
+            organization_id=organization_id,
+            project_id=project_id,
         )
         self.created.append(record)
         return record
@@ -244,10 +296,14 @@ def test_citations_do_not_leak_storage_keys_or_paths() -> None:
     asyncio.run(_run_citation_leak_test())
 
 
+def test_project_retrieval_uses_current_session_attachment_filters() -> None:
+    asyncio.run(_run_project_retrieval_scope_test())
+
+
 def test_direct_rag_persists_observability_trace_id(monkeypatch) -> None:
     from test_observability import FakeLangfuseClient
 
-    import openagentlab.observability.langfuse as langfuse_observability
+    import rastin_ai.observability.langfuse as langfuse_observability
 
     fake_client = FakeLangfuseClient()
     monkeypatch.setattr(
@@ -711,6 +767,60 @@ async def _run_trace_persistence_test() -> None:
     assert workflow_repository.trace_updates == [
         (workflow_repository.created[0].id, "trace-test")
     ]
+
+
+async def _run_project_retrieval_scope_test() -> None:
+    generator = FakeResponseGenerator()
+    retriever = ProjectScopeRetriever()
+    workflow_repository = FakeWorkflowRepository()
+    service = _persisted_service(
+        retriever,
+        generator,
+        workflow_repository=workflow_repository,
+    )
+
+    answer = await service.answer(
+        QuestionInput(
+            question="What is the launch code?",
+            document_ids=[],
+            session_id=SESSION_ID,
+            project_retrieval_scope=ProjectRetrievalScope(
+                organization_id=ORGANIZATION_ID,
+                project_id=PROJECT_ID,
+                session_id=SESSION_ID,
+            ),
+        )
+    )
+    second_chat_answer = await service.answer(
+        QuestionInput(
+            question="What is the launch code?",
+            document_ids=[],
+            session_id=SECOND_SESSION_ID,
+            project_retrieval_scope=ProjectRetrievalScope(
+                organization_id=ORGANIZATION_ID,
+                project_id=PROJECT_ID,
+                session_id=SECOND_SESSION_ID,
+            ),
+        )
+    )
+
+    assert answer.status == "answered"
+    assert {source["document_id"] for source in answer.sources} == {
+        str(DOCUMENT_ID),
+        str(SECOND_DOCUMENT_ID),
+    }
+    assert second_chat_answer.status == "answered"
+    assert {source["document_id"] for source in second_chat_answer.sources} == {
+        str(DOCUMENT_ID),
+    }
+    assert {
+        "organization_id": str(ORGANIZATION_ID),
+        "project_id": str(PROJECT_ID),
+        "document_scope": "CHAT_ATTACHMENT",
+        "session_id": str(SECOND_SESSION_ID),
+    } in retriever.calls
+    assert workflow_repository.created[0].organization_id == ORGANIZATION_ID
+    assert workflow_repository.created[0].project_id == PROJECT_ID
 
 
 def _persisted_service(

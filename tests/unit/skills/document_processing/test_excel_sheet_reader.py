@@ -3,8 +3,8 @@
 - Use: Contains unit tests for excel sheet reader behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills.document_processing, and
-  openagentlab.skills.document_processing.tools.excel_sheet_reader.
+- Depends on: Project modules: rastin_ai.skills.document_processing, and
+  rastin_ai.skills.document_processing.tools.excel_sheet_reader.
 """
 
 from datetime import date, datetime
@@ -14,8 +14,8 @@ import pytest
 from openpyxl import Workbook
 from pydantic import ValidationError
 
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.excel_sheet_reader import (
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.excel_sheet_reader import (
     ExcelSheetReaderError,
     ExcelSheetReaderInput,
     ExcelSheetReaderTool,

@@ -11,19 +11,19 @@ import asyncio
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-import openagentlab.observability.langfuse as langfuse_observability
-from openagentlab.api.dependencies import ensure_core_document_capabilities_registered
-from openagentlab.database.enums import WorkflowExecutionStatus
-from openagentlab.repositories.workflow_execution import WorkflowExecutionRecord
-from openagentlab.services.conversations import ConversationHistoryItem
-from openagentlab.services.documents import DocumentRecord, DocumentUpload
-from openagentlab.services.orchestration import (
+import rastin_ai.observability.langfuse as langfuse_observability
+from rastin_ai.api.dependencies import ensure_core_document_capabilities_registered
+from rastin_ai.database.enums import WorkflowExecutionStatus
+from rastin_ai.repositories.workflow_execution import WorkflowExecutionRecord
+from rastin_ai.services.conversations import ConversationHistoryItem
+from rastin_ai.services.documents import DocumentRecord, DocumentUpload
+from rastin_ai.services.orchestration import (
     OrchestrationRoute,
     RoutedQuestionAnsweringService,
     RuleBasedOrchestrationRouter,
 )
-from openagentlab.services.questions import QuestionAnswer, QuestionInput
-from openagentlab.tools.registry import get_tool, get_tool_definitions
+from rastin_ai.services.questions import QuestionAnswer, QuestionInput
+from rastin_ai.tools.registry import get_tool, get_tool_definitions
 
 DOCUMENT_ID = UUID("11111111-1111-4111-8111-111111111111")
 SECOND_DOCUMENT_ID = UUID("22222222-2222-4222-8222-222222222222")

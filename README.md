@@ -1,12 +1,12 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="OpenAgentLab Logo" width="400">
+  <img src="docs/images/logo.png" alt="Rastin-AI Logo" width="400">
 </div>
 
-# OpenAgentLab
+# [Rastin-AI](https://github.com/AmirYarmhmdi/Rastin-AI)
 
 > A production-oriented AI platform for document understanding, retrieval, and intelligent workflow orchestration.
 
-OpenAgentLab is an open-source AI orchestration platform for building document-aware agentic applications with production software engineering practices.
+Rastin-AI is an open-source AI orchestration platform for building document-aware agentic applications with production software engineering practices.
 
 The project is more than a chatbot. It combines a FastAPI backend, deterministic document-processing tools, retrieval-augmented generation, LangGraph workflow components, workflow persistence, observability hooks, evaluation tooling, and a small React client for submitting runs.
 
@@ -85,7 +85,7 @@ The diagram shows three main paths:
 - **Question answering:** a message retrieves relevant indexed chunks; the Context Builder prepares grounded context and metadata for OpenAI.
 - **Workflow management:** workflow-related application state, sessions, messages, and metadata are persisted in PostgreSQL.
 
-Agent modules under `src/openagentlab/agent` provide planning, tool selection, deterministic tool execution, plan validation, and response nodes for orchestrated workflows.
+Agent modules under `src/rastin_ai/agent` provide planning, tool selection, deterministic tool execution, plan validation, and response nodes for orchestrated workflows.
 
 ## Technology Stack
 
@@ -111,7 +111,7 @@ Agent modules under `src/openagentlab/agent` provide planning, tool selection, d
 |-- apps/
 |   `-- web/                       # React/Vite workflow client
 |-- src/
-|   `-- openagentlab/
+|   `-- rastin_ai/
 |       |-- agent/                 # LangGraph-oriented agent components
 |       |-- api/                   # FastAPI routers and dependencies
 |       |-- core/                  # settings, logging, exception handling
@@ -157,6 +157,13 @@ Agent modules under `src/openagentlab/agent` provide planning, tool selection, d
 
 ### Configure Environment
 
+Clone the repository and enter its directory:
+
+```bash
+git clone https://github.com/AmirYarmhmdi/Rastin-AI.git
+cd Rastin-AI
+```
+
 Create a local `.env` file from the checked-in template:
 
 ```bash
@@ -164,6 +171,59 @@ cp .env.example .env
 ```
 
 At minimum, set `OPENAI_API_KEY` before using question answering or message submission. The backend can start without it, but RAG-backed answers need it.
+
+The Python distribution is `Rastin-AI`, the import package is `rastin_ai`, and
+the Docker Compose application service is `rastin-ai`. Existing installations
+should follow the [identity migration notes](deployment/README.md#identity-migration)
+before starting the renamed stack with persistent data.
+
+### Copy-Paste Local Startup
+
+Use this path when you want the whole backend stack with PostgreSQL, Qdrant,
+Langfuse, ClickHouse, Redis, and MinIO:
+
+```bash
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY=...
+
+docker compose up -d --build
+docker compose run --rm rastin-ai uv run alembic upgrade head
+
+curl http://localhost:8000/api/v1/health
+```
+
+Then start the web client in a second terminal:
+
+```bash
+cd apps/web
+bun install
+bun run dev
+```
+
+Open:
+
+- API: `http://localhost:8000`
+- API docs: `http://localhost:8000/docs`
+- Web client: the Vite URL printed by `bun run dev`, usually `http://localhost:5173`
+
+To stop the local stack:
+
+```bash
+docker compose down
+```
+
+Use this lighter path when you only want to run the API from your local Python
+environment while PostgreSQL and Qdrant run in Docker:
+
+```bash
+cp .env.example .env
+# Edit .env and set OPENAI_API_KEY=...
+
+docker compose up -d postgres qdrant
+uv sync
+uv run alembic upgrade head
+uv run uvicorn rastin_ai.main:app --reload --host 0.0.0.0 --port 8000
+```
 
 ### Run The Backend Locally
 
@@ -176,7 +236,7 @@ uv sync
 Start the API:
 
 ```bash
-uv run uvicorn openagentlab.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn rastin_ai.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Check the service:
@@ -192,7 +252,7 @@ API documentation is available from FastAPI at:
 
 ### Run The Full Local Stack
 
-Start OpenAgentLab, PostgreSQL, Qdrant, Langfuse, ClickHouse, Redis, and MinIO:
+Start Rastin-AI, PostgreSQL, Qdrant, Langfuse, ClickHouse, Redis, and MinIO:
 
 ```bash
 docker compose up -d --build
@@ -200,7 +260,7 @@ docker compose up -d --build
 
 Useful local endpoints:
 
-- OpenAgentLab API: `http://localhost:8000`
+- Rastin-AI API: `http://localhost:8000`
 - API health: `http://localhost:8000/api/v1/health`
 - API readiness: `http://localhost:8000/api/v1/ready`
 - FastAPI docs: `http://localhost:8000/docs`
@@ -340,11 +400,11 @@ Common variables:
 | `DATABASE_URL` | Async SQLAlchemy database URL | unset |
 | `OPENAI_API_KEY` | OpenAI API key for RAG and generation | unset |
 | `QDRANT_URL` | Qdrant endpoint | unset |
-| `QDRANT_COLLECTION_NAME` | Vector collection name | `openagentlab_rag_chunks` |
+| `QDRANT_COLLECTION_NAME` | Vector collection name | `rastin_ai_rag_chunks` |
 | `OPENAI_PLANNER_MODEL` | Planner model | `gpt-4o-mini` |
 | `OPENAI_RESPONSE_MODEL` | Response model | `gpt-4o-mini` |
 | `OPENAI_EMBEDDING_MODEL` | Embedding model | `text-embedding-3-small` |
-| `OPENAGENTLAB_TOOL_SELECTOR_MODEL` | Tool selector model | `gpt-4.1-mini` |
+| `RASTIN_AI_TOOL_SELECTOR_MODEL` | Tool selector model | `gpt-4.1-mini` |
 | `RAG_CHUNK_SIZE` | Chunk size for indexing | `800` |
 | `RAG_CHUNK_OVERLAP` | Chunk overlap for indexing | `100` |
 | `RAG_RETRIEVAL_TOP_K` | Retrieved chunks per document query | `5` |
@@ -375,7 +435,7 @@ Migrations are run explicitly, not by every application replica:
 
 ```bash
 uv run alembic upgrade head
-docker compose run --rm openagentlab uv run alembic upgrade head
+docker compose run --rm rastin-ai uv run alembic upgrade head
 ```
 
 For Azure, run the same Alembic command as a one-off deployment job/command
@@ -386,7 +446,7 @@ table.
 ### Observability
 
 Langfuse tracing is optional and disabled by default. When
-`LANGFUSE_ENABLED=true` and Langfuse project keys are configured, OpenAgentLab
+`LANGFUSE_ENABLED=true` and Langfuse project keys are configured, Rastin-AI
 creates correlated traces for real runtime workflows:
 
 - `document.upload_index`: storage write, PostgreSQL document/file metadata
@@ -444,19 +504,19 @@ Evaluation dependencies are in the `evaluation` dependency group:
 uv sync --group evaluation
 ```
 
-The evaluation package includes DeepEval and Ragas adapters, threshold configuration, dataset loading, static smoke validation, and an opt-in live runtime evaluation command under `src/openagentlab/evaluation`.
+The evaluation package includes DeepEval and Ragas adapters, threshold configuration, dataset loading, static smoke validation, and an opt-in live runtime evaluation command under `src/rastin_ai/evaluation`.
 
 Static evaluation validates checked-in JSONL observations:
 
 ```bash
-uv run python -m openagentlab.evaluation validate --dataset evaluation/datasets/smoke.jsonl --tags smoke
+uv run python -m rastin_ai.evaluation validate --dataset evaluation/datasets/smoke.jsonl --tags smoke
 ```
 
 Live runtime evaluation is intentionally disabled unless you set
 `RUN_LIVE_EVALUATION=1` and provide OpenAI, PostgreSQL, and Qdrant:
 
 ```bash
-RUN_LIVE_EVALUATION=1 uv run --group evaluation python -m openagentlab.evaluation live-deepeval --dataset evaluation/datasets/live_smoke.jsonl --tags live smoke --max-cases 1 --include-report-text
+RUN_LIVE_EVALUATION=1 uv run --group evaluation python -m rastin_ai.evaluation live-deepeval --dataset evaluation/datasets/live_smoke.jsonl --tags live smoke --max-cases 1 --include-report-text
 ```
 
 See `evaluation/README.md` for prerequisites, report output, and cost controls.
@@ -478,7 +538,7 @@ Start with:
 
 ## Deployment Direction
 
-OpenAgentLab is packaged as a Docker image. The production direction is a stateless container app backed by managed services:
+Rastin-AI is packaged as a Docker image. The production direction is a stateless container app backed by managed services:
 
 - Azure Container Apps for the API container
 - Azure PostgreSQL for structured application state and metadata
@@ -529,4 +589,4 @@ This project is licensed under the GNU Affero General Public License v3.0. See `
 
 ## Acknowledgements
 
-OpenAgentLab is inspired by modern AI engineering practices and the open-source ecosystem, including FastAPI, LangGraph, OpenAI, Qdrant, Langfuse, PostgreSQL, Docker, DeepEval, and Ragas.
+Rastin-AI is inspired by modern AI engineering practices and the open-source ecosystem, including FastAPI, LangGraph, OpenAI, Qdrant, Langfuse, PostgreSQL, Docker, DeepEval, and Ragas.

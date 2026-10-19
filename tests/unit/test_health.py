@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from helpers import create_isolated_app
 from sqlalchemy.exc import SQLAlchemyError
 
-from openagentlab.database.session import get_async_session
+from rastin_ai.database.session import get_async_session
 
 
 class FakeSession:
@@ -37,7 +37,7 @@ def test_health_endpoint_returns_ok(monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "service": "OpenAgentLab",
+        "service": "Rastin-AI",
         "version": "0.1.0",
         "environment": "development",
     }
@@ -76,7 +76,7 @@ def test_root_endpoint_returns_minimal_service_metadata(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "service": "OpenAgentLab",
+        "service": "Rastin-AI",
         "version": "0.1.0",
     }
 
@@ -85,4 +85,4 @@ def test_root_endpoint_returns_minimal_service_metadata(monkeypatch) -> None:
 def test_application_can_be_created_without_external_services(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
 
-    assert app.title == "OpenAgentLab"
+    assert app.title == "Rastin-AI"

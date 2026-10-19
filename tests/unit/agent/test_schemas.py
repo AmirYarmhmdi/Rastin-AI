@@ -4,13 +4,13 @@
 - Usage: Run this file with pytest when checking planner output contracts.
 - Duties: Builds ExecutionPlan models and checks validation boundaries.
 - Depends on: External packages: pydantic. Project modules:
-  openagentlab.agent.schemas.
+  rastin_ai.agent.schemas.
 """
 
 import pytest
 from pydantic import ValidationError
 
-from openagentlab.agent.schemas import (
+from rastin_ai.agent.schemas import (
     ExecutionPlan,
     ExecutionTask,
     LiteralArgument,

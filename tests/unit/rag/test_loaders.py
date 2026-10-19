@@ -3,17 +3,17 @@
 - Use: Contains unit tests for loaders behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.exceptions,
-  openagentlab.rag.loaders.pdf, and openagentlab.rag.loaders.text.
+- Depends on: Project modules: rastin_ai.rag.exceptions,
+  rastin_ai.rag.loaders.pdf, and rastin_ai.rag.loaders.text.
 """
 
 from pathlib import Path
 
 import pytest
 
-from openagentlab.rag.exceptions import DocumentLoadError, EmptyDocumentError
-from openagentlab.rag.loaders.pdf import PDFLoader
-from openagentlab.rag.loaders.text import TextFileLoader
+from rastin_ai.rag.exceptions import DocumentLoadError, EmptyDocumentError
+from rastin_ai.rag.loaders.pdf import PDFLoader
+from rastin_ai.rag.loaders.text import TextFileLoader
 
 
 def write_text_pdf(

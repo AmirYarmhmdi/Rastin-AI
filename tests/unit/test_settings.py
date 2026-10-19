@@ -3,14 +3,14 @@
 - Use: Contains unit tests for settings behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.core.config.
+- Depends on: Project modules: rastin_ai.core.config.
 """
 
 import pytest
 from helpers import clear_settings_env
 from pydantic import ValidationError
 
-from openagentlab.core.config import (
+from rastin_ai.core.config import (
     ConfigurationError,
     Settings,
     safe_configuration_summary,
@@ -82,8 +82,8 @@ def test_runtime_configuration_overrides_storage_backend_and_secrets(
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://runtime-db")
     monkeypatch.setenv("QDRANT_API_KEY", "runtime-qdrant-key")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "runtime-langfuse-secret")
-    monkeypatch.setenv("AZURE_STORAGE_ACCOUNT_NAME", "openagentlabstorage")
-    monkeypatch.setenv("AZURE_STORAGE_CONTAINER_NAME", "openagentlab-files")
+    monkeypatch.setenv("AZURE_STORAGE_ACCOUNT_NAME", "rastinaistorage")
+    monkeypatch.setenv("AZURE_STORAGE_CONTAINER_NAME", "rastin-ai-files")
     monkeypatch.setenv(
         "AZURE_STORAGE_MANAGED_IDENTITY_CLIENT_ID",
         "11111111-1111-4111-8111-111111111111",
@@ -96,8 +96,8 @@ def test_runtime_configuration_overrides_storage_backend_and_secrets(
     assert settings.DATABASE_URL == "postgresql+asyncpg://runtime-db"
     assert settings.QDRANT_API_KEY == "runtime-qdrant-key"
     assert settings.LANGFUSE_SECRET_KEY == "runtime-langfuse-secret"
-    assert settings.AZURE_STORAGE_ACCOUNT_NAME == "openagentlabstorage"
-    assert settings.AZURE_STORAGE_CONTAINER_NAME == "openagentlab-files"
+    assert settings.AZURE_STORAGE_ACCOUNT_NAME == "rastinaistorage"
+    assert settings.AZURE_STORAGE_CONTAINER_NAME == "rastin-ai-files"
     assert (
         settings.AZURE_STORAGE_MANAGED_IDENTITY_CLIENT_ID
         == "11111111-1111-4111-8111-111111111111"
@@ -109,11 +109,11 @@ def test_rag_settings_have_development_defaults(monkeypatch) -> None:
 
     settings = build_test_settings()
 
-    assert settings.QDRANT_COLLECTION_NAME == "openagentlab_rag_chunks"
+    assert settings.QDRANT_COLLECTION_NAME == "rastin_ai_rag_chunks"
     assert settings.OPENAI_PLANNER_MODEL == "gpt-4o-mini"
     assert settings.OPENAI_RESPONSE_MODEL == "gpt-4o-mini"
     assert settings.OPENAI_EMBEDDING_MODEL == "text-embedding-3-small"
-    assert settings.OPENAGENTLAB_TOOL_SELECTOR_MODEL == "gpt-4.1-mini"
+    assert settings.RASTIN_AI_TOOL_SELECTOR_MODEL == "gpt-4.1-mini"
     assert settings.RAG_EMBEDDING_DIMENSION == 1536
     assert settings.RAG_CHUNK_SIZE == 800
     assert settings.RAG_CHUNK_OVERLAP == 100
@@ -182,7 +182,7 @@ def test_valid_azure_blob_managed_identity_configuration_passes_startup_validati
 
     settings = build_test_settings(
         STORAGE_BACKEND="azure_blob",
-        AZURE_STORAGE_ACCOUNT_NAME="openagentlabstorage",
+        AZURE_STORAGE_ACCOUNT_NAME="rastinaistorage",
         AZURE_STORAGE_CONTAINER_NAME="documents",
         AZURE_STORAGE_MANAGED_IDENTITY_CLIENT_ID=None,
     )
@@ -201,7 +201,7 @@ def test_missing_required_azure_storage_settings_fail_startup_validation(
     clear_settings_env(monkeypatch)
     values = {
         "STORAGE_BACKEND": "azure_blob",
-        "AZURE_STORAGE_ACCOUNT_NAME": "openagentlabstorage",
+        "AZURE_STORAGE_ACCOUNT_NAME": "rastinaistorage",
         "AZURE_STORAGE_CONTAINER_NAME": "documents",
     }
     values[missing_setting] = None
@@ -253,7 +253,7 @@ def test_production_environment_rejects_internal_storage_debug(monkeypatch) -> N
                 ENVIRONMENT="production",
                 AUTH_MODE="oidc",
                 AUTH_OIDC_ISSUER="https://issuer.example.test",
-                AUTH_OIDC_AUDIENCE="openagentlab",
+                AUTH_OIDC_AUDIENCE="rastin_ai",
                 AUTH_OIDC_JWKS_JSON='{"keys":[]}',
                 EXPOSE_INTERNAL_STORAGE_DEBUG=True,
             )
@@ -282,7 +282,7 @@ def test_oidc_auth_requires_jwks_source(monkeypatch) -> None:
             build_test_settings(
                 AUTH_MODE="oidc",
                 AUTH_OIDC_ISSUER="https://issuer.example.test",
-                AUTH_OIDC_AUDIENCE="openagentlab",
+                AUTH_OIDC_AUDIENCE="rastin_ai",
             )
         )
 
@@ -352,7 +352,7 @@ def test_validation_errors_and_summary_do_not_expose_secret_values(monkeypatch) 
         AZURE_STORAGE_CONTAINER_NAME=None,
         OPENAI_API_KEY="sk-secret-openai-value",
         QDRANT_API_KEY="qdrant-secret-value",
-        DATABASE_URL="postgresql+asyncpg://user:secret-password@db/openagentlab",
+        DATABASE_URL="postgresql+asyncpg://user:secret-password@db/rastin_ai",
         LANGFUSE_ENABLED=True,
         LANGFUSE_PUBLIC_KEY="pk-lf-test",
         LANGFUSE_SECRET_KEY=None,

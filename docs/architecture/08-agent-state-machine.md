@@ -1,6 +1,6 @@
 # Agent State Machine
 
-> This document defines the execution state machine of the OpenAgentLab agent.
+> This document defines the execution state machine of the Rastin-AI agent.
 >
 > The state machine specifies **how the agent transitions between operational states** during analytical workflows.
 >

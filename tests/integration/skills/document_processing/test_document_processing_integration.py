@@ -3,11 +3,11 @@
 - Use: Contains integration tests for document processing integration behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills,
-  openagentlab.skills.document_processing,
-  openagentlab.skills.document_processing.tools.csv_reader,
-  openagentlab.skills.document_processing.tools.docx_reader,
-  openagentlab.skills.document_processing.tools.excel_sheet_reader, and 6 more.
+- Depends on: Project modules: rastin_ai.skills,
+  rastin_ai.skills.document_processing,
+  rastin_ai.skills.document_processing.tools.csv_reader,
+  rastin_ai.skills.document_processing.tools.docx_reader,
+  rastin_ai.skills.document_processing.tools.excel_sheet_reader, and 6 more.
 """
 
 import json
@@ -19,45 +19,45 @@ from docx import Document
 from openpyxl import Workbook, load_workbook
 from pydantic import BaseModel, ValidationError
 
-from openagentlab.skills import SkillRegistry
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.csv_reader import (
+from rastin_ai.skills import SkillRegistry
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.csv_reader import (
     CSVReaderError,
     CSVReaderInput,
     CSVReaderOutput,
 )
-from openagentlab.skills.document_processing.tools.docx_reader import (
+from rastin_ai.skills.document_processing.tools.docx_reader import (
     DOCXReaderError,
     DOCXReaderInput,
     DOCXReaderOutput,
 )
-from openagentlab.skills.document_processing.tools.excel_sheet_reader import (
+from rastin_ai.skills.document_processing.tools.excel_sheet_reader import (
     ExcelSheetReaderError,
     ExcelSheetReaderInput,
     ExcelSheetReaderOutput,
 )
-from openagentlab.skills.document_processing.tools.excel_workbook_reader import (
+from rastin_ai.skills.document_processing.tools.excel_workbook_reader import (
     ExcelWorkbookReaderError,
     ExcelWorkbookReaderInput,
     ExcelWorkbookReaderOutput,
 )
-from openagentlab.skills.document_processing.tools.json_reader import (
+from rastin_ai.skills.document_processing.tools.json_reader import (
     JSONReaderError,
     JSONReaderInput,
     JSONReaderOutput,
 )
-from openagentlab.skills.document_processing.tools.pdf_reader import (
+from rastin_ai.skills.document_processing.tools.pdf_reader import (
     PDFReaderError,
     PDFReaderInput,
     PDFReaderOutput,
 )
-from openagentlab.skills.document_processing.tools.text_reader import (
+from rastin_ai.skills.document_processing.tools.text_reader import (
     TextReaderError,
     TextReaderInput,
     TextReaderOutput,
 )
-from openagentlab.skills.registry import DuplicateSkillError
-from openagentlab.skills.tool import BaseTool
+from rastin_ai.skills.registry import DuplicateSkillError
+from rastin_ai.skills.tool import BaseTool
 
 EXPECTED_DECLARED_CAPABILITIES = (
     "document.read.pdf",
@@ -203,7 +203,7 @@ def write_workbook(path: Path) -> None:
 
     workbook.properties.title = "Integration Workbook"
     workbook.properties.subject = "Document Processing"
-    workbook.properties.creator = "OpenAgentLab"
+    workbook.properties.creator = "Rastin-AI"
     workbook.properties.description = "Integration fixture"
     workbook.properties.created = datetime(2026, 8, 8, 9, 30, 0)
 
@@ -235,7 +235,7 @@ def write_docx(path: Path) -> None:
     table.cell(1, 1).text = "42"
 
     document.core_properties.title = "Integration DOCX"
-    document.core_properties.author = "OpenAgentLab"
+    document.core_properties.author = "Rastin-AI"
     document.core_properties.created = datetime(2026, 8, 8, 9, 30, 0)
 
     document.save(path)
@@ -296,7 +296,7 @@ def test_pdf_reader_executes_through_skill(tmp_path: Path) -> None:
     write_text_pdf(
         path,
         ("First page", "Second page", ""),
-        {"Title": "Integration PDF", "Author": "OpenAgentLab"},
+        {"Title": "Integration PDF", "Author": "Rastin-AI"},
     )
     tool = get_required_tool(DocumentProcessingSkill(), "pdf_reader")
 
@@ -310,7 +310,7 @@ def test_pdf_reader_executes_through_skill(tmp_path: Path) -> None:
     assert "Second page" in result.pages[1].text
     assert result.pages[2].text == ""
     assert result.metadata["Title"] == "Integration PDF"
-    assert result.metadata["Author"] == "OpenAgentLab"
+    assert result.metadata["Author"] == "Rastin-AI"
 
 
 @pytest.mark.parametrize(
@@ -359,7 +359,7 @@ def test_excel_workbook_reader_executes_through_skill(tmp_path: Path) -> None:
     assert result.sheets[3].max_row == 1
     assert result.sheets[3].max_column == 1
     assert result.metadata["title"] == "Integration Workbook"
-    assert result.metadata["creator"] == "OpenAgentLab"
+    assert result.metadata["creator"] == "Rastin-AI"
     assert "worksheets" not in result.model_dump()
 
 
@@ -639,7 +639,7 @@ def test_text_reader_failures_propagate_through_skill(tmp_path: Path) -> None:
 def test_json_reader_executes_through_skill(tmp_path: Path) -> None:
     path = tmp_path / "document.json"
     value = {
-        "name": "OpenAgentLab",
+        "name": "Rastin-AI",
         "count": 42,
         "active": True,
         "date": "2026-08-10",
@@ -706,7 +706,7 @@ def test_docx_reader_executes_through_skill(tmp_path: Path) -> None:
     assert result.tables[0].rows == (("name", "value"), ("alpha", "42"))
     assert isinstance(result.tables[0].rows[1][1], str)
     assert result.metadata["title"] == "Integration DOCX"
-    assert result.metadata["author"] == "OpenAgentLab"
+    assert result.metadata["author"] == "Rastin-AI"
 
 
 def test_docx_reader_failures_propagate_through_skill(tmp_path: Path) -> None:

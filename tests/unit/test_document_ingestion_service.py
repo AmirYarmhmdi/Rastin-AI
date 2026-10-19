@@ -3,9 +3,9 @@
 - Use: Tests synchronous upload-to-index document ingestion behavior.
 - Usage: Run with pytest for document ingestion service changes.
 - Duties: Uses fakes for storage, repository, loaders, embeddings, and vector store.
-- Depends on: Project modules: openagentlab.database.enums,
-  openagentlab.rag, openagentlab.repositories.documents, and
-  openagentlab.services.
+- Depends on: Project modules: rastin_ai.database.enums,
+  rastin_ai.rag, rastin_ai.repositories.documents, and
+  rastin_ai.services.
 """
 
 import asyncio
@@ -14,30 +14,30 @@ from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
-import openagentlab.observability.langfuse as langfuse_observability
-from openagentlab.database.enums import DocumentStatus, FileStorageStatus
-from openagentlab.rag.chunking.recursive import RecursiveTextChunker
-from openagentlab.rag.exceptions import (
+import rastin_ai.observability.langfuse as langfuse_observability
+from rastin_ai.database.enums import DocumentStatus, FileStorageStatus
+from rastin_ai.rag.chunking.recursive import RecursiveTextChunker
+from rastin_ai.rag.exceptions import (
     DocumentLoadError,
     EmbeddingError,
     VectorStoreError,
 )
-from openagentlab.rag.extraction import MALFORMED_JSON
-from openagentlab.rag.indexing import DocumentIndexer
-from openagentlab.rag.models import Document
-from openagentlab.repositories.documents import (
+from rastin_ai.rag.extraction import MALFORMED_JSON
+from rastin_ai.rag.indexing import DocumentIndexer
+from rastin_ai.rag.models import Document
+from rastin_ai.repositories.documents import (
     UploadedDocumentCreate,
     UploadedDocumentRecord,
 )
-from openagentlab.services.document_ingestion import (
+from rastin_ai.services.document_ingestion import (
     EMBEDDING_FAILED,
     EXTRACTION_FAILED,
     VECTOR_STORE_FAILED,
     SynchronousDocumentIngestionService,
 )
-from openagentlab.services.documents import DocumentUpload, StoredDocumentService
-from openagentlab.services.upload import UploadService
-from openagentlab.storage.base import StoredObject
+from rastin_ai.services.documents import DocumentUpload, StoredDocumentService
+from rastin_ai.services.upload import UploadService
+from rastin_ai.storage.base import StoredObject
 
 DOCUMENT_ID = UUID("11111111-1111-4111-8111-111111111111")
 USER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")

@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab requires a backend framework responsible for exposing REST APIs, managing user sessions, handling file uploads, orchestrating AI workflows, and serving as the entry point to the platform.
+Rastin-AI requires a backend framework responsible for exposing REST APIs, managing user sessions, handling file uploads, orchestrating AI workflows, and serving as the entry point to the platform.
 
 The framework should support:
 
@@ -24,7 +24,7 @@ The framework should support:
 
 # Decision
 
-OpenAgentLab adopts **FastAPI** as the primary backend framework.
+Rastin-AI adopts **FastAPI** as the primary backend framework.
 
 FastAPI will be responsible for:
 

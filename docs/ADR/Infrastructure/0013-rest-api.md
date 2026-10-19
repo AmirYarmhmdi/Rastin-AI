@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab exposes application functionality to external clients.
+Rastin-AI exposes application functionality to external clients.
 
 The API should:
 
@@ -22,7 +22,7 @@ The API should:
 
 # Decision
 
-OpenAgentLab adopts **REST** as the primary external API style.
+Rastin-AI adopts **REST** as the primary external API style.
 
 REST endpoints expose application resources.
 

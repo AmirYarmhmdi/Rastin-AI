@@ -1,6 +1,6 @@
 # High-Level Architecture
 
-> This document describes the internal architecture of OpenAgentLab.
+> This document describes the internal architecture of Rastin-AI.
 >
 > It defines the major containers and responsibilities of the platform without specifying implementation details.
 >
@@ -25,7 +25,7 @@
 
 # Architectural Philosophy
 
-OpenAgentLab is not a chatbot.
+Rastin-AI is not a chatbot.
 
 It is an AI orchestration platform where Large Language Models coordinate deterministic tools to solve analytical tasks.
 
@@ -324,7 +324,7 @@ No redesign should be required to support these extensions.
 
 # Architecture Principles
 
-OpenAgentLab follows these principles:
+Rastin-AI follows these principles:
 
 - Separation of Concerns
 - Single Responsibility

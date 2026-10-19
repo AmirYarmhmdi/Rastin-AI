@@ -3,22 +3,22 @@
 - Use: Contains unit tests for local storage behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.storage.exceptions, and
-  openagentlab.storage.local.
+- Depends on: Project modules: rastin_ai.storage.exceptions, and
+  rastin_ai.storage.local.
 """
 
 import pytest
 
-from openagentlab.storage.exceptions import (
+from rastin_ai.storage.exceptions import (
     InvalidStorageKeyError,
     StorageObjectNotFoundError,
 )
-from openagentlab.storage.local import LocalStorageProvider
+from rastin_ai.storage.local import LocalStorageProvider
 
 
 def test_local_storage_saves_and_reads_binary_data(tmp_path) -> None:
     provider = LocalStorageProvider(tmp_path)
-    content = b"\x00openagentlab\xff"
+    content = b"\x00rastin_ai\xff"
 
     stored = provider.save("files/file-1/content.pdf", content)
 

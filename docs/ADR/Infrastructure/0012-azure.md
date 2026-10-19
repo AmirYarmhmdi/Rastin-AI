@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab should demonstrate production-ready cloud deployment.
+Rastin-AI should demonstrate production-ready cloud deployment.
 
 The platform requires infrastructure capable of hosting:
 
@@ -24,7 +24,7 @@ The cloud provider should support future scaling without requiring architectural
 
 # Decision
 
-OpenAgentLab adopts **Microsoft Azure** as the primary cloud platform.
+Rastin-AI adopts **Microsoft Azure** as the primary cloud platform.
 
 Azure is selected because of:
 

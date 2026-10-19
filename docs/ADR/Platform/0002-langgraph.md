@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab is not a traditional chatbot.
+Rastin-AI is not a traditional chatbot.
 
 The platform coordinates multiple deterministic tools to execute analytical workflows.
 
@@ -25,7 +25,7 @@ The orchestration framework should support:
 
 # Decision
 
-OpenAgentLab adopts **LangGraph** as the workflow orchestration framework.
+Rastin-AI adopts **LangGraph** as the workflow orchestration framework.
 
 LangGraph is responsible for:
 

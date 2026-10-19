@@ -1,6 +1,6 @@
 # Tool Contracts
 
-> This document defines the formal contracts for every deterministic tool available in OpenAgentLab.
+> This document defines the formal contracts for every deterministic tool available in Rastin-AI.
 >
 > A Tool Contract specifies the expected interface, execution behavior, validation rules, error handling, and runtime guarantees.
 >

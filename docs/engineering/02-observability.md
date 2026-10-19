@@ -40,9 +40,9 @@ without reproducing the issue.
 - Token usage
 - Latency
 - Cost
-- Direct OpenAI Responses API calls made by OpenAgentLab adapters are traced as
+- Direct OpenAI Responses API calls made by Rastin-AI adapters are traced as
   generation observations.
-- Provider-reported token usage is forwarded when available. OpenAgentLab does
+- Provider-reported token usage is forwarded when available. Rastin-AI does
   not estimate token counts or calculate billing.
 
 ### Tools
@@ -94,14 +94,14 @@ LANGFUSE_BASE_URL=http://localhost:3000
 Compose stack this is usually `http://localhost:3000`; for Langfuse Cloud use the
 project's configured region URL.
 
-If `LANGFUSE_ENABLED=true` but either key is missing, OpenAgentLab logs that
+If `LANGFUSE_ENABLED=true` but either key is missing, Rastin-AI logs that
 observability is disabled and continues running.
 
 ---
 
 ## Traced Data
 
-OpenAgentLab sends the following non-sensitive telemetry when enabled:
+Rastin-AI sends the following non-sensitive telemetry when enabled:
 
 - Workflow executions: root agent/workflow observation, environment, app version,
   and bounded input/output.

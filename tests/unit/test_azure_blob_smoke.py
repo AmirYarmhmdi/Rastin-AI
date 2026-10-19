@@ -3,18 +3,18 @@
 - Use: Contains unit tests for the Azure Blob storage smoke runner.
 - Usage: Run this file with pytest when checking smoke-test behavior.
 - Duties: Uses fake storage providers to verify smoke-test operations and cleanup.
-- Depends on: Project modules: openagentlab.storage.azure_blob_smoke,
-  openagentlab.storage.base, and openagentlab.storage.exceptions.
+- Depends on: Project modules: rastin_ai.storage.azure_blob_smoke,
+  rastin_ai.storage.base, and rastin_ai.storage.exceptions.
 """
 
 import pytest
 
-from openagentlab.storage.azure_blob_smoke import (
+from rastin_ai.storage.azure_blob_smoke import (
     SMOKE_TEST_CONTENT,
     StorageSmokeTestError,
     run_storage_provider_smoke_test,
 )
-from openagentlab.storage.base import StoredObject
+from rastin_ai.storage.base import StoredObject
 
 
 class FakeStorageProvider:

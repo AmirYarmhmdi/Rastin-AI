@@ -1,6 +1,6 @@
 # Deployment Configuration
 
-OpenAgentLab is configuration-driven. The same container image can run locally,
+Rastin-AI is configuration-driven. The same container image can run locally,
 under Docker Compose, in Azure Container Apps, or in another provider-neutral
 runtime as long as the application environment variables are supplied.
 
@@ -9,11 +9,13 @@ document as the runtime contract for deployment assets and release runbooks.
 
 ## Application Settings
 
-These names are consumed by `openagentlab.core.config.Settings`.
+See [Identity Migration](#identity-migration) when updating an existing installation.
+
+These names are consumed by `rastin_ai.core.config.Settings`.
 
 | Variable | Local default | Azure Container Apps | Notes |
 | --- | --- | --- | --- |
-| `APP_NAME` | `OpenAgentLab` | optional | Display name only. |
+| `APP_NAME` | `Rastin-AI` | optional | Display name only. |
 | `APP_VERSION` | `0.1.0` | image/release version | Safe to log. |
 | `ENVIRONMENT` | `development` | `production` or environment name | Safe to log. |
 | `DEBUG` | `false` | `false` | Do not enable in production. |
@@ -25,11 +27,11 @@ These names are consumed by `openagentlab.core.config.Settings`.
 | `OPENAI_API_KEY` | developer secret | required secret | Required for embeddings, planning, response generation. |
 | `QDRANT_URL` | `http://localhost:6333` | required | Qdrant endpoint. |
 | `QDRANT_API_KEY` | empty | secret if Qdrant requires it | Optional for unauthenticated local Qdrant. |
-| `QDRANT_COLLECTION_NAME` | `openagentlab_rag_chunks` | required | Must not be empty. |
+| `QDRANT_COLLECTION_NAME` | `rastin_ai_rag_chunks` | required | Must not be empty. |
 | `OPENAI_PLANNER_MODEL` | `gpt-4o-mini` | required | Planner model. |
 | `OPENAI_RESPONSE_MODEL` | `gpt-4o-mini` | required | Response model. |
 | `OPENAI_EMBEDDING_MODEL` | `text-embedding-3-small` | required | Embedding model. |
-| `OPENAGENTLAB_TOOL_SELECTOR_MODEL` | `gpt-4.1-mini` | required | Tool selector model. |
+| `RASTIN_AI_TOOL_SELECTOR_MODEL` | `gpt-4.1-mini` | required | Tool selector model. |
 | `RAG_EMBEDDING_DIMENSION` | `1536` | required | Must match embedding model/vector collection. |
 | `RAG_CHUNK_SIZE` | `800` | required | Positive integer. |
 | `RAG_CHUNK_OVERLAP` | `100` | required | Must be smaller than `RAG_CHUNK_SIZE`. |
@@ -77,12 +79,12 @@ uv run alembic upgrade head
 Docker Compose migration:
 
 ```bash
-docker compose run --rm openagentlab uv run alembic upgrade head
+docker compose run --rm rastin-ai uv run alembic upgrade head
 ```
 
 Azure deployment-oriented procedure:
 
-1. Build and publish the OpenAgentLab image.
+1. Build and publish the Rastin-AI image.
 2. Ensure the target database and secrets/configuration exist.
 3. Run one explicit migration command/job using the same image and production
    settings:
@@ -102,14 +104,14 @@ The checked-in `Dockerfile` starts only Uvicorn. It does not run migrations.
    ```bash
    uv run pytest tests/unit/test_settings.py tests/unit/test_configuration_parity.py
    uv run alembic upgrade head
-   uv run uvicorn openagentlab.main:app --reload --host 0.0.0.0 --port 8000
+   uv run uvicorn rastin_ai.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 2. Validate the local container stack:
 
    ```bash
    docker compose up -d --build
-   docker compose run --rm openagentlab uv run alembic upgrade head
+   docker compose run --rm rastin-ai uv run alembic upgrade head
    curl http://127.0.0.1:8000/api/v1/health
    curl http://127.0.0.1:8000/api/v1/ready
    ```
@@ -137,3 +139,37 @@ The checked-in `Dockerfile` starts only Uvicorn. It does not run migrations.
 | Model calls fail | `OPENAI_API_KEY` missing | Configure the secret in the runtime environment. |
 | Langfuse disabled despite being intended | Missing project keys | Set `LANGFUSE_ENABLED=true`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_SECRET_KEY`. |
 | Multiple replicas race migrations | Alembic run in app startup | Remove startup migration hooks and use a one-off migration job/command. |
+
+
+## Identity Migration
+
+Rastin-AI is hosted at [AmirYarmhmdi/Rastin-AI](https://github.com/AmirYarmhmdi/Rastin-AI).
+The Python distribution is `Rastin-AI`, imports use `rastin_ai`, the frontend
+package is `@rastin-ai/web`, and the Compose application service is `rastin-ai`.
+
+For an existing installation:
+
+1. Stop the earlier Compose stack using its original configuration. Preserve
+   its volumes; do not use `docker compose down -v`.
+2. Merge the updated `.env.example` into your local environment without
+   overwriting credentials. Rename the project-specific tool selector setting
+   to `RASTIN_AI_TOOL_SELECTOR_MODEL` and the application port settings to
+   `COMPOSE_RASTIN_AI_BIND_HOST` and `COMPOSE_RASTIN_AI_PORT`. Set
+   `APP_NAME=Rastin-AI`.
+3. To reuse existing Docker data, inspect `docker volume ls` and set
+   `RASTIN_AI_VOLUME_PREFIX` to the prefix of your existing volumes (the part
+   before `_postgres_data`, `_qdrant_data`, `_storage`, or `_langfuse_*`).
+   The default prefix is `rastin_ai` for new installations. This setting applies
+   to all eight persistent volumes, including the Langfuse dependencies.
+4. Preserve your existing `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`,
+   `DATABASE_URL`, and `QDRANT_COLLECTION_NAME` values when reusing data.
+   Preserve `AUTH_DISABLED_LOCAL_USER_ISSUER` and
+   `AUTH_DISABLED_LOCAL_USER_SUBJECT` to keep the same local development user.
+   Renaming the project does not rename databases, collections, or saved users.
+5. Run `uv sync --locked --group dev`, update external scripts and deployment
+   commands to use `rastin_ai.main:app`, and use `rastin-ai` for Compose commands.
+   Start the stack with `docker compose up -d --build` and apply migrations with
+   `docker compose run --rm rastin-ai uv run alembic upgrade head`.
+
+The web client uses `rastin_ai.*` browser storage keys; choose your organization,
+project, and session again after updating. Server-side records remain available.

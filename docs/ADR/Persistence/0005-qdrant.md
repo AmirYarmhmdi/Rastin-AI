@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab implements Retrieval-Augmented Generation (RAG).
+Rastin-AI implements Retrieval-Augmented Generation (RAG).
 
 The platform requires a vector database capable of:
 
@@ -25,7 +25,7 @@ Embeddings should remain independent from relational metadata.
 
 # Decision
 
-OpenAgentLab adopts **Qdrant** as the primary vector database.
+Rastin-AI adopts **Qdrant** as the primary vector database.
 
 Qdrant stores:
 

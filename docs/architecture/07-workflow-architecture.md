@@ -1,6 +1,6 @@
 # Workflow Architecture
 
-> This document defines how the OpenAgentLab agent reasons, plans, and executes analytical workflows.
+> This document defines how the Rastin-AI agent reasons, plans, and executes analytical workflows.
 >
 > It specifies the internal workflow logic independently of implementation details.
 >
@@ -25,7 +25,7 @@
 
 # Workflow Philosophy
 
-OpenAgentLab does not answer questions directly.
+Rastin-AI does not answer questions directly.
 
 Instead, it executes analytical workflows composed of deterministic steps coordinated by an LLM.
 

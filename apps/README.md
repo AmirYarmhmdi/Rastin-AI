@@ -1,7 +1,7 @@
 # Apps
 
 This folder contains user-facing applications that sit on top of the
-OpenAgentLab backend.
+Rastin-AI backend.
 
 ## What Is In This Folder
 
@@ -18,6 +18,6 @@ logic, persistence rules, RAG behavior, or agent orchestration.
 ## Boundary
 
 Applications in this folder consume backend contracts exposed by
-`src/openagentlab/api`. When an app needs new behavior, the durable business
+`src/rastin_ai/api`. When an app needs new behavior, the durable business
 logic should usually be added to backend services first, then surfaced through
 an API endpoint and consumed here.

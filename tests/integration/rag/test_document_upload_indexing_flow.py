@@ -15,23 +15,23 @@ import pytest
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
-from openagentlab.database import Base
-from openagentlab.database.engine import create_database_engine
-from openagentlab.database.enums import DocumentStatus
-from openagentlab.database.models.user import User
-from openagentlab.database.session import create_session_factory
-from openagentlab.rag.chunking.recursive import RecursiveTextChunker
-from openagentlab.rag.indexing import DocumentIndexer
-from openagentlab.rag.retrieval.retriever import Retriever
-from openagentlab.rag.vectorstores.qdrant import QdrantVectorStore
-from openagentlab.repositories.documents import SQLAlchemyDocumentRepository
-from openagentlab.services.document_ingestion import SynchronousDocumentIngestionService
-from openagentlab.services.documents import DocumentUpload, StoredDocumentService
-from openagentlab.services.upload import UploadService
-from openagentlab.storage.local import LocalStorageProvider
+from rastin_ai.database import Base
+from rastin_ai.database.engine import create_database_engine
+from rastin_ai.database.enums import DocumentStatus
+from rastin_ai.database.models.user import User
+from rastin_ai.database.session import create_session_factory
+from rastin_ai.rag.chunking.recursive import RecursiveTextChunker
+from rastin_ai.rag.indexing import DocumentIndexer
+from rastin_ai.rag.retrieval.retriever import Retriever
+from rastin_ai.rag.vectorstores.qdrant import QdrantVectorStore
+from rastin_ai.repositories.documents import SQLAlchemyDocumentRepository
+from rastin_ai.services.document_ingestion import SynchronousDocumentIngestionService
+from rastin_ai.services.documents import DocumentUpload, StoredDocumentService
+from rastin_ai.services.upload import UploadService
+from rastin_ai.storage.local import LocalStorageProvider
 
-TEST_DATABASE_URL = os.environ.get("OPENAGENTLAB_TEST_DATABASE_URL")
-TEST_QDRANT_URL = os.environ.get("OPENAGENTLAB_TEST_QDRANT_URL")
+TEST_DATABASE_URL = os.environ.get("RASTIN_AI_TEST_DATABASE_URL")
+TEST_QDRANT_URL = os.environ.get("RASTIN_AI_TEST_QDRANT_URL")
 USER_ID = uuid.UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 
 
@@ -55,13 +55,13 @@ class KeywordEmbeddingProvider:
 
 def test_document_upload_persists_and_indexes_into_real_qdrant(tmp_path: Path) -> None:
     if not TEST_DATABASE_URL:
-        pytest.skip("OPENAGENTLAB_TEST_DATABASE_URL is required for this test.")
+        pytest.skip("RASTIN_AI_TEST_DATABASE_URL is required for this test.")
     if not _is_safe_test_database_url(TEST_DATABASE_URL):
         pytest.skip(
-            "OPENAGENTLAB_TEST_DATABASE_URL must point to a database ending in _test.",
+            "RASTIN_AI_TEST_DATABASE_URL must point to a database ending in _test.",
         )
     if not TEST_QDRANT_URL:
-        pytest.skip("OPENAGENTLAB_TEST_QDRANT_URL is required for this test.")
+        pytest.skip("RASTIN_AI_TEST_QDRANT_URL is required for this test.")
 
     asyncio.run(_run_document_upload_indexing_flow(tmp_path))
 

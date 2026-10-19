@@ -3,8 +3,8 @@
 - Use: Contains unit tests for database behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.core.config, openagentlab.database,
-  openagentlab.database.engine, and openagentlab.database.session.
+- Depends on: Project modules: rastin_ai.core.config, rastin_ai.database,
+  rastin_ai.database.engine, and rastin_ai.database.session.
 """
 
 import asyncio
@@ -21,10 +21,10 @@ from alembic.script import ScriptDirectory
 from helpers import clear_settings_env
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from openagentlab.core.config import Settings, get_settings
-from openagentlab.database import Base, models
-from openagentlab.database.engine import create_database_engine, get_database_url
-from openagentlab.database.session import create_session_factory
+from rastin_ai.core.config import Settings, get_settings
+from rastin_ai.database import Base, models
+from rastin_ai.database.engine import create_database_engine, get_database_url
+from rastin_ai.database.session import create_session_factory
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,6 +36,10 @@ def test_all_initial_models_are_registered_with_metadata() -> None:
         "conversation_messages",
         "documents",
         "file_metadata",
+        "organization_members",
+        "organizations",
+        "project_members",
+        "projects",
         "sessions",
         "users",
         "workflow_executions",
@@ -61,21 +65,55 @@ def test_constraints_and_indexes_match_initial_schema() -> None:
     conversation_message_documents = Base.metadata.tables[
         "conversation_message_documents"
     ]
+    organizations = Base.metadata.tables["organizations"]
+    organization_members = Base.metadata.tables["organization_members"]
+    projects = Base.metadata.tables["projects"]
+    project_members = Base.metadata.tables["project_members"]
     workflow_executions = Base.metadata.tables["workflow_executions"]
 
     assert {constraint.name for constraint in sessions.constraints} >= {
+        "ck_sessions_session_project_scope_pair",
         "ck_sessions_session_status",
+        "fk_sessions_organization_id_organizations",
+        "fk_sessions_project_id_projects",
         "fk_sessions_user_id_users",
         "pk_sessions",
     }
+    assert {index.name for index in sessions.indexes} == {
+        "ix_sessions_organization_id",
+        "ix_sessions_organization_id_project_id",
+        "ix_sessions_project_id",
+        "ix_sessions_project_user_updated_at",
+        "ix_sessions_user_id",
+    }
+    assert sessions.c.organization_id.nullable is True
+    assert sessions.c.project_id.nullable is True
     assert {index.name for index in documents.indexes} == {
+        "ix_documents_organization_id",
+        "ix_documents_organization_id_project_id",
+        "ix_documents_project_id",
+        "ix_documents_project_scope",
         "ix_documents_session_id",
         "ix_documents_user_id",
     }
+    assert documents.c.session_id.nullable is True
     assert documents.c.user_id.nullable is True
+    assert documents.c.organization_id.nullable is True
+    assert documents.c.project_id.nullable is True
+    assert documents.c.document_scope.server_default.arg == "LEGACY"
     assert documents.c.status.server_default.arg == "uploaded"
     assert documents.c.indexing_error_code.nullable is True
     assert documents.c.indexing_error_message.nullable is True
+    assert {constraint.name for constraint in documents.constraints} >= {
+        "ck_documents_document_scope",
+        "ck_documents_document_scope_ownership",
+        "ck_documents_document_status",
+        "fk_documents_organization_id_organizations",
+        "fk_documents_project_id_projects",
+        "fk_documents_session_id_sessions",
+        "fk_documents_user_id_users",
+        "pk_documents",
+    }
     assert file_metadata.c.document_id.unique is True
     assert file_metadata.c.document_id.nullable is True
     assert file_metadata.c.user_id.nullable is True
@@ -88,12 +126,27 @@ def test_constraints_and_indexes_match_initial_schema() -> None:
         "uq_file_metadata_document_id",
     }
     assert {index.name for index in workflow_executions.indexes} == {
+        "ix_workflow_executions_organization_id",
+        "ix_workflow_executions_organization_id_project_id",
+        "ix_workflow_executions_project_id",
+        "ix_workflow_executions_project_session_user",
         "ix_workflow_executions_session_id",
         "ix_workflow_executions_status",
         "ix_workflow_executions_user_id",
     }
     assert workflow_executions.c.user_id.nullable is True
+    assert workflow_executions.c.organization_id.nullable is True
+    assert workflow_executions.c.project_id.nullable is True
     assert workflow_executions.c.trace_id.nullable is True
+    assert {constraint.name for constraint in workflow_executions.constraints} >= {
+        "ck_workflow_executions_workflow_execution_project_scope_pair",
+        "ck_workflow_executions_workflow_execution_status",
+        "fk_workflow_executions_organization_id_organizations",
+        "fk_workflow_executions_project_id_projects",
+        "fk_workflow_executions_session_project_scope",
+        "fk_workflow_executions_session_id_sessions",
+        "pk_workflow_executions",
+    }
     assert {constraint.name for constraint in users.constraints} >= {
         "pk_users",
         "uq_users_issuer_external_subject",
@@ -135,17 +188,57 @@ def test_constraints_and_indexes_match_initial_schema() -> None:
         "ix_conversation_message_documents_file_metadata_id",
         "ix_conversation_message_documents_message_id",
     }
+    assert {constraint.name for constraint in organizations.constraints} >= {
+        "fk_organizations_created_by_user_id_users",
+        "pk_organizations",
+    }
+    assert {index.name for index in organizations.indexes} >= {
+        "ix_organizations_created_by_user_id",
+        "ix_organizations_slug",
+    }
+    assert {constraint.name for constraint in organization_members.constraints} >= {
+        "ck_organization_members_organization_member_role",
+        "fk_organization_members_organization_id_organizations",
+        "fk_organization_members_user_id_users",
+        "pk_organization_members",
+        "uq_organization_members_organization_id_user_id",
+    }
+    assert {index.name for index in organization_members.indexes} == {
+        "ix_organization_members_organization_id",
+        "ix_organization_members_user_id",
+    }
+    assert {constraint.name for constraint in projects.constraints} >= {
+        "fk_projects_created_by_user_id_users",
+        "fk_projects_organization_id_organizations",
+        "pk_projects",
+        "uq_projects_id_organization_id",
+    }
+    assert {index.name for index in projects.indexes} == {
+        "ix_projects_created_by_user_id",
+        "ix_projects_organization_id",
+    }
+    assert {constraint.name for constraint in project_members.constraints} >= {
+        "ck_project_members_project_member_role",
+        "fk_project_members_project_id_projects",
+        "fk_project_members_user_id_users",
+        "pk_project_members",
+        "uq_project_members_project_id_user_id",
+    }
+    assert {index.name for index in project_members.indexes} == {
+        "ix_project_members_project_id",
+        "ix_project_members_user_id",
+    }
 
 
 def test_database_url_is_loaded_from_settings(monkeypatch) -> None:
     clear_settings_env(monkeypatch)
 
     settings = Settings(
-        DATABASE_URL="postgresql+asyncpg://openagentlab:password@postgres/openagentlab"
+        DATABASE_URL="postgresql+asyncpg://rastin_ai:password@postgres/rastin_ai"
     )
 
     assert get_database_url(settings) == (
-        "postgresql+asyncpg://openagentlab:password@postgres/openagentlab"
+        "postgresql+asyncpg://rastin_ai:password@postgres/rastin_ai"
     )
 
 
@@ -168,16 +261,49 @@ def test_alembic_revision_history_has_one_head() -> None:
     config = Config(PROJECT_ROOT / "alembic.ini")
     script = ScriptDirectory.from_config(config)
 
-    assert script.get_heads() == ["20260807_0006"]
-    assert script.get_current_head() == "20260807_0006"
+    assert script.get_heads() == ["20260807_0009"]
+    assert script.get_current_head() == "20260807_0009"
+
+
+def test_project_document_scope_migration_preflight_rejects_null_legacy_sessions(
+    monkeypatch,
+) -> None:
+    module = _load_migration("20260807_0008_project_document_scope.py")
+
+    class FakeResult:
+        def scalar_one(self) -> int:
+            return 1
+
+    class FakeBind:
+        def execute(self, _statement: object) -> FakeResult:
+            return FakeResult()
+
+    monkeypatch.setattr(module.op, "get_bind", lambda: FakeBind())
+
+    with pytest.raises(RuntimeError, match="NULL session_id"):
+        module._assert_existing_documents_are_legacy_compatible()
+
+
+def _load_migration(filename: str):
+    spec = importlib.util.spec_from_file_location(
+        f"_test_{filename.removesuffix('.py')}",
+        PROJECT_ROOT / "alembic" / "versions" / filename,
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.modules.pop(spec.name, None)
+    return module
 
 
 def test_alembic_handles_percent_encoded_database_url_without_connecting(
     monkeypatch,
 ) -> None:
-    database_url = (
-        "postgresql+asyncpg://openagentlab:p%2Ass%25word@postgres/openagentlab"
-    )
+    database_url = "postgresql+asyncpg://rastin_ai:p%2Ass%25word@postgres/rastin_ai"
     offline_configure_kwargs = {}
     online_engine_config = {}
 
@@ -257,7 +383,7 @@ def test_alembic_handles_percent_encoded_database_url_without_connecting(
 
 def test_async_engine_and_session_factory_use_asyncpg_url() -> None:
     engine = create_database_engine(
-        "postgresql+asyncpg://openagentlab:password@localhost/openagentlab"
+        "postgresql+asyncpg://rastin_ai:password@localhost/rastin_ai"
     )
     session_factory = create_session_factory(engine)
 

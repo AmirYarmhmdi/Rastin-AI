@@ -11,7 +11,7 @@ The core design question for this document is:
 
 > What do knowledge workers need to accomplish when their work spans documents, spreadsheets, data, calculations, and reports?
 
-For OpenAgentLab, a knowledge worker is a professional who makes decisions or produces analytical outputs by combining information from multiple sources.
+For Rastin-AI, a knowledge worker is a professional who makes decisions or produces analytical outputs by combining information from multiple sources.
 
 They do not only want a chatbot answer. They need a workspace that can:
 
@@ -74,7 +74,7 @@ These personas represent recurring knowledge-work patterns across planning, anal
 
 # Core Product Workflow
 
-Every analytical workflow in OpenAgentLab follows the same high-level execution model:
+Every analytical workflow in Rastin-AI follows the same high-level execution model:
 
 1. Upload one or more sources
 2. Inspect extracted content

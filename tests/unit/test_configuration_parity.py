@@ -5,21 +5,21 @@
 - Duties: Prevents stale environment-variable names and accidental startup
   migration coupling.
 - Depends on: Standard library plus PyYAML from project dependencies. Project
-  module: openagentlab.core.config.
+  module: rastin_ai.core.config.
 """
 
 from pathlib import Path
 
 import yaml
 
-from openagentlab.core.config import application_setting_names
+from rastin_ai.core.config import application_setting_names
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_docker_compose_app_environment_names_match_settings() -> None:
     compose = yaml.safe_load((PROJECT_ROOT / "docker-compose.yml").read_text())
-    app_environment = compose["services"]["openagentlab"]["environment"]
+    app_environment = compose["services"]["rastin-ai"]["environment"]
 
     unknown_names = set(app_environment) - set(application_setting_names())
 
@@ -37,7 +37,7 @@ def test_env_example_covers_application_settings() -> None:
 def test_migration_strategy_is_external_to_application_replica_startup() -> None:
     dockerfile = (PROJECT_ROOT / "Dockerfile").read_text()
     compose = (PROJECT_ROOT / "docker-compose.yml").read_text()
-    main = (PROJECT_ROOT / "src/openagentlab/main.py").read_text()
+    main = (PROJECT_ROOT / "src/rastin_ai/main.py").read_text()
 
     assert "alembic upgrade" not in dockerfile
     assert "alembic upgrade" not in compose

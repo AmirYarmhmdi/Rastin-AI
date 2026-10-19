@@ -1,159 +1,664 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 
-import { getWorkflow, listWorkflows, submitMessage } from "./api";
+import {
+  createOrganization,
+  createProject,
+  createProjectSession,
+  deleteProjectDocument,
+  downloadProjectDocument,
+  getProjectSession,
+  listOrganizations,
+  listProjectDocuments,
+  listProjects,
+  listProjectSessions,
+  submitProjectMessage,
+  uploadProjectDocument
+} from "./api";
 import type {
   AttachmentMetadata,
-  MessageSubmissionResponse,
-  WorkflowDetail,
-  WorkflowListItem,
-  WorkflowStatusResponse
+  Organization,
+  Project,
+  ProjectDocument,
+  ProjectMessage,
+  ProjectMessageSubmissionResponse,
+  ProjectSession,
+  ProjectSessionSummary,
+  WorkflowDetail
 } from "./types";
 
-type ActiveRun =
-  | { kind: "message"; data: MessageSubmissionResponse }
-  | { kind: "workflow"; data: WorkflowStatusResponse }
-  | null;
+const ORG_SELECTION_KEY = "rastin_ai.selectedOrganizationId";
+const PROJECT_SELECTION_KEY = "rastin_ai.selectedProjectId";
+const SESSION_SELECTION_KEY = "rastin_ai.selectedSessionId";
 
 function App() {
-  const [runs, setRuns] = useState<WorkflowListItem[]>([]);
-  const [activeRun, setActiveRun] = useState<ActiveRun>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [sessions, setSessions] = useState<ProjectSessionSummary[]>([]);
+  const [libraryDocuments, setLibraryDocuments] = useState<ProjectDocument[]>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(
+    null
+  );
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessionDetail, setSessionDetail] = useState<ProjectSession | null>(null);
+  const [lastSubmission, setLastSubmission] =
+    useState<ProjectMessageSubmissionResponse | null>(null);
   const [message, setMessage] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [isLoadingRuns, setIsLoadingRuns] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [messageFiles, setMessageFiles] = useState<File[]>([]);
+  const [messageInputKey, setMessageInputKey] = useState(0);
+  const [newOrganizationName, setNewOrganizationName] = useState("");
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectDescription, setNewProjectDescription] = useState("");
+  const [isLoadingOrganizations, setIsLoadingOrganizations] = useState(true);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [isCreatingOrganization, setIsCreatingOrganization] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [isSubmittingMessage, setIsSubmittingMessage] = useState(false);
+  const [isUploadingLibrary, setIsUploadingLibrary] = useState(false);
+  const [appError, setAppError] = useState<string | null>(null);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+
+  const selectedOrganization = useMemo(
+    () =>
+      organizations.find(
+        (organization) => organization.id === selectedOrganizationId
+      ) ?? null,
+    [organizations, selectedOrganizationId]
+  );
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? null,
+    [projects, selectedProjectId]
+  );
+  const canChat = hasPermission(selectedProject, "chats.create");
+  const canUploadDocuments = hasPermission(selectedProject, "documents.upload");
+  const canDeleteDocuments = selectedProject?.effective_role === "ADMIN";
 
   useEffect(() => {
-    void refreshRuns();
+    let isCurrent = true;
+    async function load() {
+      setIsLoadingOrganizations(true);
+      setAppError(null);
+      try {
+        const loaded = await listOrganizations();
+        if (!isCurrent) {
+          return;
+        }
+        setOrganizations(loaded);
+        setSelectedOrganizationId(validStoredId(ORG_SELECTION_KEY, loaded) ?? loaded[0]?.id ?? null);
+      } catch (caught) {
+        if (isCurrent) {
+          setAppError(errorMessage(caught));
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingOrganizations(false);
+        }
+      }
+    }
+    void load();
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
-  const activeDetails = useMemo(() => readActiveRun(activeRun), [activeRun]);
-
-  async function refreshRuns() {
-    setIsLoadingRuns(true);
-    try {
-      const response = await listWorkflows();
-      setRuns(response.workflows);
-    } catch (caught) {
-      setError(errorMessage(caught));
-    } finally {
-      setIsLoadingRuns(false);
+  useEffect(() => {
+    if (selectedOrganizationId) {
+      storeSelection(ORG_SELECTION_KEY, selectedOrganizationId);
     }
-  }
+  }, [selectedOrganizationId]);
 
-  async function selectRun(workflowId: string) {
-    setError(null);
-    setSelectedWorkflowId(workflowId);
-    try {
-      setActiveRun({ kind: "workflow", data: await getWorkflow(workflowId) });
-    } catch (caught) {
-      setError(errorMessage(caught));
-    }
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!message.trim() || isSubmitting) {
+  useEffect(() => {
+    if (!selectedOrganizationId) {
+      setProjects([]);
+      setSelectedProjectId(null);
       return;
     }
 
-    setError(null);
-    setIsSubmitting(true);
-    setSelectedWorkflowId(null);
+    const organizationId = selectedOrganizationId;
+    let isCurrent = true;
+    async function load() {
+      setIsLoadingProjects(true);
+      setProjectError(null);
+      setProjects([]);
+      setSelectedProjectId(null);
+      setSessions([]);
+      setSessionDetail(null);
+      setSelectedSessionId(null);
+      try {
+        const loaded = await listProjects(organizationId);
+        if (!isCurrent) {
+          return;
+        }
+        setProjects(loaded);
+        setSelectedProjectId(validStoredId(PROJECT_SELECTION_KEY, loaded) ?? loaded[0]?.id ?? null);
+      } catch (caught) {
+        if (isCurrent) {
+          setProjectError(errorMessage(caught));
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingProjects(false);
+        }
+      }
+    }
+    void load();
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedOrganizationId]);
+
+  useEffect(() => {
+    if (selectedProjectId) {
+      storeSelection(PROJECT_SELECTION_KEY, selectedProjectId);
+    }
+  }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProject) {
+      setSessions([]);
+      setLibraryDocuments([]);
+      setSessionDetail(null);
+      setSelectedSessionId(null);
+      return;
+    }
+
+    const projectId = selectedProject.id;
+    void refreshLibrary(projectId);
+    if (!canChat) {
+      setSessions([]);
+      setSessionDetail(null);
+      setSelectedSessionId(null);
+      return;
+    }
+
+    let isCurrent = true;
+    async function load() {
+      setIsLoadingSessions(true);
+      setChatError(null);
+      setSessions([]);
+      setSessionDetail(null);
+      setSelectedSessionId(null);
+      try {
+        const loaded = await listProjectSessions(projectId);
+        if (!isCurrent) {
+          return;
+        }
+        setSessions(loaded);
+        setSelectedSessionId(validStoredId(SESSION_SELECTION_KEY, loaded) ?? loaded[0]?.id ?? null);
+      } catch (caught) {
+        if (isCurrent) {
+          setChatError(errorMessage(caught));
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingSessions(false);
+        }
+      }
+    }
+    void load();
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedProject, canChat]);
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      storeSelection(SESSION_SELECTION_KEY, selectedSessionId);
+    }
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (!selectedProject || !selectedSessionId || !canChat) {
+      setSessionDetail(null);
+      return;
+    }
+
+    const projectId = selectedProject.id;
+    const sessionId = selectedSessionId;
+    let isCurrent = true;
+    async function load() {
+      setIsLoadingSession(true);
+      setChatError(null);
+      try {
+        const detail = await getProjectSession(projectId, sessionId);
+        if (isCurrent) {
+          setSessionDetail(detail);
+        }
+      } catch (caught) {
+        if (isCurrent) {
+          setChatError(errorMessage(caught));
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoadingSession(false);
+        }
+      }
+    }
+    void load();
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedProject, selectedSessionId, canChat]);
+
+  async function refreshLibrary(projectId = selectedProject?.id) {
+    if (!projectId) {
+      return;
+    }
+    setIsLoadingLibrary(true);
+    setLibraryError(null);
     try {
-      const response = await submitMessage(message.trim(), files);
-      setActiveRun({ kind: "message", data: response });
-      setMessage("");
-      await refreshRuns();
+      setLibraryDocuments(await listProjectDocuments(projectId));
     } catch (caught) {
-      setError(errorMessage(caught));
+      setLibraryError(errorMessage(caught));
     } finally {
-      setIsSubmitting(false);
+      setIsLoadingLibrary(false);
+    }
+  }
+
+  async function handleCreateOrganization(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = newOrganizationName.trim();
+    if (!name || isCreatingOrganization) {
+      return;
+    }
+    setIsCreatingOrganization(true);
+    setAppError(null);
+    try {
+      const organization = await createOrganization({ name });
+      setOrganizations((current) => [...current, organization]);
+      setSelectedOrganizationId(organization.id);
+      setNewOrganizationName("");
+    } catch (caught) {
+      setAppError(errorMessage(caught));
+    } finally {
+      setIsCreatingOrganization(false);
+    }
+  }
+
+  async function handleCreateProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedOrganization) {
+      return;
+    }
+    const name = newProjectName.trim();
+    if (!name || isCreatingProject) {
+      return;
+    }
+    setIsCreatingProject(true);
+    setProjectError(null);
+    try {
+      const project = await createProject(selectedOrganization.id, {
+        name,
+        description: newProjectDescription.trim() || null
+      });
+      setProjects((current) => [...current, project]);
+      setSelectedProjectId(project.id);
+      setNewProjectName("");
+      setNewProjectDescription("");
+    } catch (caught) {
+      setProjectError(errorMessage(caught));
+    } finally {
+      setIsCreatingProject(false);
+    }
+  }
+
+  async function handleCreateSession() {
+    if (!selectedProject || isCreatingSession) {
+      return;
+    }
+    setIsCreatingSession(true);
+    setChatError(null);
+    try {
+      const session = await createProjectSession(selectedProject.id, null);
+      setSessions((current) => [session, ...current]);
+      setSelectedSessionId(session.id);
+      setSessionDetail({
+        ...session,
+        messages: []
+      });
+      setLastSubmission(null);
+    } catch (caught) {
+      setChatError(errorMessage(caught));
+    } finally {
+      setIsCreatingSession(false);
+    }
+  }
+
+  async function handleSubmitMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedProject || !canChat || isSubmittingMessage) {
+      return;
+    }
+    const trimmed = message.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    setIsSubmittingMessage(true);
+    setChatError(null);
+    try {
+      let sessionId = selectedSessionId;
+      let createdSession: ProjectSessionSummary | null = null;
+      if (!sessionId) {
+        createdSession = await createProjectSession(selectedProject.id, null);
+        sessionId = createdSession.id;
+        setSessions((current) => [createdSession as ProjectSessionSummary, ...current]);
+        setSelectedSessionId(sessionId);
+      }
+
+      const result = await submitProjectMessage(
+        selectedProject.id,
+        sessionId,
+        trimmed,
+        messageFiles
+      );
+      setLastSubmission(result);
+      setSessionDetail((current) => mergeSubmissionIntoSession(current, createdSession, result));
+      setMessage("");
+      setMessageFiles([]);
+      setMessageInputKey((current) => current + 1);
+      void reloadSessions(selectedProject.id, result.session_id);
+    } catch (caught) {
+      setChatError(errorMessage(caught));
+    } finally {
+      setIsSubmittingMessage(false);
+    }
+  }
+
+  async function reloadSessions(projectId: string, selectedId: string) {
+    try {
+      const loaded = await listProjectSessions(projectId);
+      setSessions(loaded);
+      setSelectedSessionId(selectedId);
+    } catch {
+      // The submitted answer is already visible; keep the refresh failure non-fatal.
+    }
+  }
+
+  async function handleLibraryUpload(event: ChangeEvent<HTMLInputElement>) {
+    if (!selectedProject) {
+      return;
+    }
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) {
+      return;
+    }
+    setIsUploadingLibrary(true);
+    setLibraryError(null);
+    try {
+      const uploaded: ProjectDocument[] = [];
+      for (const file of files) {
+        uploaded.push(await uploadProjectDocument(selectedProject.id, file));
+      }
+      setLibraryDocuments((current) => [...uploaded, ...current]);
+    } catch (caught) {
+      setLibraryError(errorMessage(caught));
+    } finally {
+      setIsUploadingLibrary(false);
+      event.target.value = "";
+    }
+  }
+
+  async function handleDownloadDocument(document: ProjectDocument) {
+    if (!selectedProject) {
+      return;
+    }
+    setLibraryError(null);
+    try {
+      const blob = await downloadProjectDocument(
+        selectedProject.id,
+        document.document_id
+      );
+      const url = URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = document.filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setLibraryError(errorMessage(caught));
+    }
+  }
+
+  async function handleDeleteDocument(document: ProjectDocument) {
+    if (!selectedProject) {
+      return;
+    }
+    setLibraryError(null);
+    try {
+      await deleteProjectDocument(selectedProject.id, document.document_id);
+      setLibraryDocuments((current) =>
+        current.filter((item) => item.document_id !== document.document_id)
+      );
+    } catch (caught) {
+      setLibraryError(errorMessage(caught));
     }
   }
 
   return (
     <main className="appShell">
-      <aside className="sidebar" aria-label="Recent workflow runs">
-        <div className="sidebarHeader">
-          <h1>OpenAgentLab</h1>
-          <p>Recent runs</p>
-        </div>
+      <aside className="sidebar" aria-label="Project navigation">
+        <header className="brandBlock">
+          <h1>Rastin-AI</h1>
+          <p>Project workspace</p>
+        </header>
 
-        <button
-          className="secondaryButton"
-          type="button"
-          onClick={() => {
-            setActiveRun(null);
-            setSelectedWorkflowId(null);
-            setError(null);
-          }}
-        >
-          Start run
-        </button>
-
-        <div className="runList" aria-live="polite">
-          {isLoadingRuns ? <p className="muted">Loading runs...</p> : null}
-          {!isLoadingRuns && runs.length === 0 ? (
-            <p className="muted">No workflow runs yet.</p>
-          ) : null}
-          {runs.map((run) => (
+        <section className="stack" aria-label="Organization selector">
+          <div className="sectionHeader">
+            <h2>Organization</h2>
+            {isLoadingOrganizations ? <span>Loading</span> : null}
+          </div>
+          <SelectField
+            label="Current organization"
+            value={selectedOrganizationId ?? ""}
+            disabled={isLoadingOrganizations || organizations.length === 0}
+            onChange={(value) => setSelectedOrganizationId(value || null)}
+            options={organizations.map((organization) => ({
+              value: organization.id,
+              label: organization.name
+            }))}
+          />
+          <form className="compactForm" onSubmit={handleCreateOrganization}>
+            <label htmlFor="organization-name">Organization name</label>
+            <input
+              id="organization-name"
+              value={newOrganizationName}
+              onChange={(event) => setNewOrganizationName(event.target.value)}
+              placeholder="Create organization"
+            />
             <button
-              className={
-                run.workflow_id === selectedWorkflowId
-                  ? "runItem selected"
-                  : "runItem"
-              }
-              key={run.workflow_id}
-              type="button"
-              onClick={() => void selectRun(run.workflow_id)}
+              className="secondaryButton"
+              disabled={!newOrganizationName.trim() || isCreatingOrganization}
+              type="submit"
             >
-              <span>{run.display_label}</span>
-              <small>
-                {run.status} · {formatDate(run.created_at)}
-              </small>
+              {isCreatingOrganization ? "Creating..." : "Create org"}
             </button>
-          ))}
-        </div>
+          </form>
+        </section>
+
+        <section className="stack" aria-label="Project selector">
+          <div className="sectionHeader">
+            <h2>Project</h2>
+            {selectedProject ? <span>{selectedProject.effective_role}</span> : null}
+          </div>
+          <SelectField
+            label="Current project"
+            value={selectedProjectId ?? ""}
+            disabled={!selectedOrganization || isLoadingProjects || projects.length === 0}
+            onChange={(value) => setSelectedProjectId(value || null)}
+            options={projects.map((project) => ({
+              value: project.id,
+              label: project.name
+            }))}
+          />
+          <form className="compactForm" onSubmit={handleCreateProject}>
+            <label htmlFor="project-name">Project name</label>
+            <input
+              id="project-name"
+              value={newProjectName}
+              onChange={(event) => setNewProjectName(event.target.value)}
+              placeholder="Create project"
+              disabled={!selectedOrganization}
+            />
+            <label htmlFor="project-description">Project description</label>
+            <input
+              id="project-description"
+              value={newProjectDescription}
+              onChange={(event) => setNewProjectDescription(event.target.value)}
+              placeholder="Optional"
+              disabled={!selectedOrganization}
+            />
+            <button
+              className="secondaryButton"
+              disabled={!selectedOrganization || !newProjectName.trim() || isCreatingProject}
+              type="submit"
+            >
+              {isCreatingProject ? "Creating..." : "Create project"}
+            </button>
+          </form>
+        </section>
+
+        <section className="stack grow" aria-label="Private chats">
+          <div className="sectionHeader">
+            <h2>Private chats</h2>
+            {isLoadingSessions ? <span>Loading</span> : null}
+          </div>
+          <button
+            className="primaryButton"
+            disabled={!selectedProject || !canChat || isCreatingSession}
+            type="button"
+            onClick={() => void handleCreateSession()}
+          >
+            {isCreatingSession ? "Creating..." : "New chat"}
+          </button>
+          <div className="itemList" aria-live="polite">
+            {!selectedProject ? <p className="muted">Select a project.</p> : null}
+            {selectedProject && !canChat ? (
+              <p className="muted">Private chats are not available for this role.</p>
+            ) : null}
+            {selectedProject && canChat && !isLoadingSessions && sessions.length === 0 ? (
+              <p className="muted">No private chats yet.</p>
+            ) : null}
+            {sessions.map((session) => (
+              <button
+                className={
+                  session.id === selectedSessionId ? "itemButton selected" : "itemButton"
+                }
+                key={session.id}
+                type="button"
+                onClick={() => {
+                  setSelectedSessionId(session.id);
+                  setLastSubmission(null);
+                }}
+              >
+                <span>{session.title || "Untitled chat"}</span>
+                <small>{session.status} · {formatDate(session.updated_at)}</small>
+              </button>
+            ))}
+          </div>
+        </section>
       </aside>
 
-      <section className="workspace" aria-label="Workflow run">
-        <div className="runPanel">
-          {error ? (
-            <div className="errorBanner" role="alert">
-              {error}
+      <section className="workspace" aria-label="Project workspace">
+        <header className="workspaceHeader">
+          <div>
+            <p className="eyebrow">{selectedOrganization?.name || "No organization"}</p>
+            <h2>{selectedProject?.name || "Select a project"}</h2>
+            {selectedProject?.description ? <p>{selectedProject.description}</p> : null}
+          </div>
+          {selectedProject ? (
+            <div className="permissionLine" aria-label="Project permissions">
+              {selectedProject.permissions.map((permission) => (
+                <span key={permission}>{permission}</span>
+              ))}
             </div>
           ) : null}
-          {isSubmitting ? <StatusBlock status="pending" /> : null}
-          {!isSubmitting && activeDetails ? (
-            <RunDetails details={activeDetails} />
-          ) : null}
-          {!isSubmitting && !activeDetails ? <EmptyState /> : null}
+        </header>
+
+        <div className="contentGrid">
+          <section className="chatSurface" aria-label="Selected private chat">
+            <ErrorStack errors={[appError, projectError, chatError]} />
+            {!selectedOrganization && !isLoadingOrganizations ? (
+              <EmptyState
+                title="Create an organization"
+                body="Organizations contain the projects, chats, and library files you can access."
+              />
+            ) : null}
+            {selectedOrganization && !selectedProject && !isLoadingProjects ? (
+              <EmptyState
+                title="No project selected"
+                body={
+                  projects.length === 0
+                    ? "This organization has no projects available to your account."
+                    : "Choose a project to open its private chats and library."
+                }
+              />
+            ) : null}
+            {selectedProject && !canChat ? (
+              <EmptyState
+                title="Project library access"
+                body="Your current project role can read project files, but cannot create or continue private chats."
+              />
+            ) : null}
+            {selectedProject && canChat ? (
+              <ChatThread
+                isLoading={isLoadingSession}
+                session={sessionDetail}
+                lastSubmission={lastSubmission}
+              />
+            ) : null}
+          </section>
+
+          <ProjectLibrary
+            canDelete={canDeleteDocuments}
+            canUpload={canUploadDocuments}
+            documents={libraryDocuments}
+            error={libraryError}
+            isLoading={isLoadingLibrary}
+            isUploading={isUploadingLibrary}
+            onDelete={(document) => void handleDeleteDocument(document)}
+            onDownload={(document) => void handleDownloadDocument(document)}
+            onRefresh={() => void refreshLibrary()}
+            onUpload={handleLibraryUpload}
+            projectSelected={Boolean(selectedProject)}
+          />
         </div>
 
-        <form className="composer" onSubmit={(event) => void handleSubmit(event)}>
-          <label htmlFor="message">Question</label>
+        <form className="composer" onSubmit={handleSubmitMessage}>
+          <label htmlFor="message">Message</label>
           <textarea
             id="message"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
-            placeholder="Ask a question for a new workflow run..."
+            placeholder={
+              canChat
+                ? "Ask a project-scoped question..."
+                : "Private chat is unavailable for this project role."
+            }
             rows={3}
+            disabled={!selectedProject || !canChat || isSubmittingMessage}
           />
           <div className="composerFooter">
             <label className="fileButton">
               Attach files
               <input
+                key={messageInputKey}
                 multiple
                 type="file"
+                disabled={!selectedProject || !canChat || isSubmittingMessage}
                 onChange={(event) =>
-                  setFiles(Array.from(event.target.files ?? []))
+                  setMessageFiles(Array.from(event.target.files ?? []))
                 }
               />
             </label>
             <div className="pendingFiles" aria-live="polite">
-              {files.map((file) => (
+              {messageFiles.map((file) => (
                 <span key={`${file.name}-${file.size}`}>
                   {file.name} ({formatBytes(file.size)})
                 </span>
@@ -161,10 +666,10 @@ function App() {
             </div>
             <button
               className="primaryButton"
-              disabled={!message.trim() || isSubmitting}
+              disabled={!selectedProject || !canChat || !message.trim() || isSubmittingMessage}
               type="submit"
             >
-              {isSubmitting ? "Running..." : "Send"}
+              {isSubmittingMessage ? "Sending..." : "Send"}
             </button>
           </div>
         </form>
@@ -173,162 +678,383 @@ function App() {
   );
 }
 
-interface RunDetailsView {
-  workflowId: string | null;
-  sessionId: string | null;
-  status: string;
-  answer: string | null;
-  error: string | null;
-  attachments: AttachmentMetadata[];
-  sources: Record<string, unknown>[];
-  artifacts: Record<string, unknown>[];
-  workflowDetails: WorkflowDetail[];
+function SelectField({
+  disabled,
+  label,
+  onChange,
+  options,
+  value
+}: {
+  disabled: boolean;
+  label: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  value: string;
+}) {
+  return (
+    <label className="selectField">
+      <span>{label}</span>
+      <select
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">None</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
-function RunDetails({ details }: { details: RunDetailsView }) {
+function ChatThread({
+  isLoading,
+  lastSubmission,
+  session
+}: {
+  isLoading: boolean;
+  lastSubmission: ProjectMessageSubmissionResponse | null;
+  session: ProjectSession | null;
+}) {
+  if (isLoading) {
+    return <p className="muted">Loading chat...</p>;
+  }
+
+  if (!session) {
+    return (
+      <EmptyState
+        title="Start a private chat"
+        body="Create or send a message to start a chat scoped to this project."
+      />
+    );
+  }
+
   return (
-    <article className="runDetails">
-      <header>
-        <StatusBlock status={details.status} />
-        {details.workflowId ? (
-          <p className="identifier">Run {details.workflowId}</p>
-        ) : null}
-      </header>
-
-      {details.error ? (
-        <div className="errorBanner" role="alert">
-          {details.error}
+    <article className="thread">
+      <header className="threadHeader">
+        <div>
+          <p className="eyebrow">Private chat</p>
+          <h3>{session.title || "Untitled chat"}</h3>
         </div>
-      ) : null}
-
-      <section>
-        <h2>Final answer</h2>
-        <p className="answerText">
-          {details.answer || "No final answer returned yet."}
-        </p>
-      </section>
-
-      <AttachmentList attachments={details.attachments} />
-      <ArtifactList artifacts={details.artifacts} />
-
-      {details.workflowDetails.length ? (
-        <details className="workflowDetails">
-          <summary>Workflow details</summary>
-          <ol>
-            {details.workflowDetails.map((step, index) => (
-              <li key={`${step.label}-${index}`}>
-                <strong>{step.label}</strong>
-                <span>{step.status}</span>
-                {step.summary ? <p>{step.summary}</p> : null}
-              </li>
-            ))}
-          </ol>
-        </details>
+        <StatusPill status={lastSubmission?.status ?? session.status} />
+      </header>
+      <div className="messageList">
+        {session.messages.length === 0 ? (
+          <p className="muted">No messages in this chat yet.</p>
+        ) : null}
+        {session.messages.map((item) => (
+          <MessageBubble key={item.id} message={item} />
+        ))}
+      </div>
+      {lastSubmission ? (
+        <AnswerDetails
+          attachments={lastSubmission.attachments}
+          citations={lastSubmission.citations}
+          sources={lastSubmission.sources}
+          workflowDetails={lastSubmission.workflow_details}
+          workflowId={lastSubmission.workflow_id}
+        />
       ) : null}
     </article>
   );
 }
 
-function StatusBlock({ status }: { status: string }) {
-  return <div className={`status status-${status}`}>{status}</div>;
+function MessageBubble({ message }: { message: ProjectMessage }) {
+  return (
+    <section className={`messageBubble ${message.role}`}>
+      <header>
+        <strong>{message.role === "assistant" ? "Assistant" : "You"}</strong>
+        <small>{message.status} · {formatDate(message.created_at)}</small>
+      </header>
+      <p>{message.content}</p>
+      {message.error_message ? (
+        <div className="errorBanner" role="alert">
+          {message.error_message}
+        </div>
+      ) : null}
+      {message.citations.length || message.sources.length ? (
+        <EvidenceList citations={message.citations} sources={message.sources} />
+      ) : null}
+    </section>
+  );
 }
 
-function AttachmentList({
-  attachments
+function AnswerDetails({
+  attachments,
+  citations,
+  sources,
+  workflowDetails,
+  workflowId
 }: {
   attachments: AttachmentMetadata[];
+  citations: Record<string, unknown>[];
+  sources: Record<string, unknown>[];
+  workflowDetails: WorkflowDetail[];
+  workflowId: string | null;
 }) {
-  if (!attachments.length) {
-    return null;
-  }
-
   return (
-    <section>
-      <h2>Attached files</h2>
-      <ul className="attachmentList">
-        {attachments.map((attachment) => (
-          <li key={attachment.document_id}>
-            <span>{attachment.filename}</span>
-            <small>
-              {attachment.content_type || "unknown type"} ·{" "}
-              {formatBytes(attachment.size_bytes)} · {attachment.status}
-            </small>
+    <aside className="answerDetails" aria-label="Latest answer details">
+      {workflowId ? <p className="identifier">Workflow {workflowId}</p> : null}
+      {attachments.length ? (
+        <section>
+          <h4>Attachments</h4>
+          <ul className="compactList">
+            {attachments.map((attachment) => (
+              <li key={attachment.document_id}>
+                <span>{attachment.filename}</span>
+                <small>
+                  {attachment.content_type || "unknown type"} ·{" "}
+                  {formatBytes(attachment.size_bytes)} · {attachment.status}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {citations.length || sources.length ? (
+        <EvidenceList citations={citations} sources={sources} />
+      ) : null}
+      {workflowDetails.length ? (
+        <details className="workflowDetails">
+          <summary>Workflow details</summary>
+          <ol>
+            {workflowDetails.map((detail, index) => (
+              <li key={`${detail.label}-${index}`}>
+                <strong>{detail.label}</strong>
+                <span>{detail.status}</span>
+                {detail.summary ? <p>{detail.summary}</p> : null}
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
+    </aside>
+  );
+}
+
+function EvidenceList({
+  citations,
+  sources
+}: {
+  citations: Record<string, unknown>[];
+  sources: Record<string, unknown>[];
+}) {
+  return (
+    <section className="evidenceBlock">
+      {citations.length ? (
+        <>
+          <h4>Citations</h4>
+          <ul className="compactList">
+            {citations.map((citation, index) => (
+              <li key={`citation-${index}`}>{evidenceLabel(citation)}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {sources.length ? (
+        <>
+          <h4>Sources</h4>
+          <ul className="compactList">
+            {sources.map((source, index) => (
+              <li key={`source-${index}`}>{evidenceLabel(source)}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function ProjectLibrary({
+  canDelete,
+  canUpload,
+  documents,
+  error,
+  isLoading,
+  isUploading,
+  onDelete,
+  onDownload,
+  onRefresh,
+  onUpload,
+  projectSelected
+}: {
+  canDelete: boolean;
+  canUpload: boolean;
+  documents: ProjectDocument[];
+  error: string | null;
+  isLoading: boolean;
+  isUploading: boolean;
+  onDelete: (document: ProjectDocument) => void;
+  onDownload: (document: ProjectDocument) => void;
+  onRefresh: () => void;
+  onUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+  projectSelected: boolean;
+}) {
+  return (
+    <aside className="libraryPanel" aria-label="Project files">
+      <header className="panelHeader">
+        <div>
+          <p className="eyebrow">Project files</p>
+          <h3>Library</h3>
+        </div>
+        <button
+          className="iconButton"
+          disabled={!projectSelected || isLoading}
+          type="button"
+          onClick={onRefresh}
+          aria-label="Refresh project files"
+          title="Refresh project files"
+        >
+          Refresh
+        </button>
+      </header>
+      {error ? (
+        <div className="errorBanner" role="alert">
+          {error}
+        </div>
+      ) : null}
+      <label className="fileButton fullWidth">
+        {isUploading ? "Uploading..." : "Upload file"}
+        <input
+          multiple
+          type="file"
+          disabled={!projectSelected || !canUpload || isUploading}
+          onChange={onUpload}
+        />
+      </label>
+      {!canUpload && projectSelected ? (
+        <p className="muted">Upload is not available for this project role.</p>
+      ) : null}
+      {isLoading ? <p className="muted">Loading project files...</p> : null}
+      {!isLoading && documents.length === 0 ? (
+        <p className="muted">No project files yet.</p>
+      ) : null}
+      <ul className="documentList">
+        {documents.map((document) => (
+          <li key={document.document_id}>
+            <div>
+              <strong>{document.filename}</strong>
+              <small>
+                {document.document_scope} · {document.status} ·{" "}
+                {formatBytes(document.size_bytes)}
+              </small>
+              {document.indexing_error_message ? (
+                <small className="dangerText">{document.indexing_error_message}</small>
+              ) : null}
+            </div>
+            <div className="documentActions">
+              <button type="button" onClick={() => onDownload(document)}>
+                Download
+              </button>
+              <button
+                disabled={!canDelete}
+                type="button"
+                onClick={() => onDelete(document)}
+              >
+                Delete
+              </button>
+            </div>
           </li>
         ))}
       </ul>
-      <p className="limitation">
-        Files are stored for this run and readable uploaded contents are used as
-        direct answer context.
-      </p>
-    </section>
+    </aside>
   );
 }
 
-function ArtifactList({ artifacts }: { artifacts: Record<string, unknown>[] }) {
-  return (
-    <section>
-      <h2>Artifacts</h2>
-      {artifacts.length ? (
-        <ul className="artifactList">
-          {artifacts.map((artifact, index) => (
-            <li key={index}>{artifactLabel(artifact)}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="muted">No artifacts returned.</p>
-      )}
-    </section>
-  );
-}
-
-function EmptyState() {
+function EmptyState({ body, title }: { body: string; title: string }) {
   return (
     <div className="emptyState">
-      <h2>Start a workflow run</h2>
-      <p>
-        Submit a question to execute the configured OpenAgentLab
-        question-answering workflow.
-      </p>
+      <h3>{title}</h3>
+      <p>{body}</p>
     </div>
   );
 }
 
-function readActiveRun(activeRun: ActiveRun): RunDetailsView | null {
-  if (!activeRun) {
-    return null;
-  }
+function ErrorStack({ errors }: { errors: (string | null)[] }) {
+  return (
+    <>
+      {errors.filter(Boolean).map((error) => (
+        <div className="errorBanner" key={error} role="alert">
+          {error}
+        </div>
+      ))}
+    </>
+  );
+}
 
-  if (activeRun.kind === "message") {
-    return {
-      workflowId: activeRun.data.workflow_id,
-      sessionId: activeRun.data.session_id,
-      status: activeRun.data.status,
-      answer: activeRun.data.final_answer,
-      error: null,
-      attachments: activeRun.data.attachments,
-      sources: activeRun.data.sources,
-      artifacts: activeRun.data.artifacts,
-      workflowDetails: activeRun.data.workflow_details
-    };
-  }
+function StatusPill({ status }: { status: string }) {
+  return <span className={`status status-${status}`}>{status}</span>;
+}
 
-  const result = activeRun.data.result;
+function mergeSubmissionIntoSession(
+  current: ProjectSession | null,
+  createdSession: ProjectSessionSummary | null,
+  result: ProjectMessageSubmissionResponse
+): ProjectSession {
+  const base: ProjectSession = current ?? {
+    id: result.session_id,
+    title: createdSession?.title ?? null,
+    status: createdSession?.status ?? result.status,
+    created_at: createdSession?.created_at ?? result.user_message.created_at,
+    updated_at: result.assistant_message.created_at,
+    messages: []
+  };
+  const previousMessages = base.messages.filter(
+    (message) =>
+      message.id !== result.user_message.id &&
+      message.id !== result.assistant_message.id
+  );
   return {
-    workflowId: activeRun.data.workflow_id,
-    sessionId: activeRun.data.session_id,
-    status: activeRun.data.status,
-    answer: result?.final_answer ?? result?.answer ?? null,
-    error: activeRun.data.error,
-    attachments: result?.attachments ?? [],
-    sources: result?.sources ?? [],
-    artifacts: result?.artifacts ?? [],
-    workflowDetails: result?.workflow_details ?? []
+    ...base,
+    status: result.status,
+    updated_at: result.assistant_message.created_at,
+    messages: [
+      ...previousMessages,
+      result.user_message,
+      result.assistant_message
+    ].sort((left, right) => left.sequence - right.sequence)
   };
 }
 
-function artifactLabel(artifact: Record<string, unknown>): string {
-  const filename = artifact.filename ?? artifact.name ?? artifact.title;
-  return typeof filename === "string" ? filename : JSON.stringify(artifact);
+function hasPermission(project: Project | null, permission: string): boolean {
+  return Boolean(project?.permissions.includes(permission));
+}
+
+function validStoredId<T extends { id: string }>(
+  key: string,
+  records: T[]
+): string | null {
+  const stored = readSelection(key);
+  return stored && records.some((record) => record.id === stored) ? stored : null;
+}
+
+function readSelection(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storeSelection(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Browser storage is only a convenience.
+  }
+}
+
+function evidenceLabel(value: Record<string, unknown>): string {
+  for (const key of ["filename", "source", "title", "document_id"]) {
+    const candidate = value[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+  }
+  return JSON.stringify(value);
 }
 
 function formatDate(value: string): string {

@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab stores uploaded files before they are processed.
+Rastin-AI stores uploaded files before they are processed.
 
 The MVP uses the local filesystem, but future deployments may require cloud object storage.
 
@@ -20,7 +20,7 @@ Supported storage backends may evolve over time.
 
 # Decision
 
-OpenAgentLab introduces a Storage Abstraction Layer.
+Rastin-AI introduces a Storage Abstraction Layer.
 
 All file operations shall be performed through a common Storage Provider interface.
 

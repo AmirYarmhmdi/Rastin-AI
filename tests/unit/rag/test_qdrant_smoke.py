@@ -3,16 +3,16 @@
 - Use: Contains unit tests for the internal Qdrant smoke runner.
 - Usage: Run this file with pytest when checking Qdrant smoke-test behavior.
 - Duties: Uses fake vector stores to verify fixed-vector operations and cleanup.
-- Depends on: Project modules: openagentlab.rag.models and
-  openagentlab.rag.qdrant_smoke.
+- Depends on: Project modules: rastin_ai.rag.models and
+  rastin_ai.rag.qdrant_smoke.
 """
 
 from types import SimpleNamespace
 
 import pytest
 
-from openagentlab.rag.models import RetrievedChunk
-from openagentlab.rag.qdrant_smoke import (
+from rastin_ai.rag.models import RetrievedChunk
+from rastin_ai.rag.qdrant_smoke import (
     SMOKE_TEST_CHUNK_ID,
     SMOKE_TEST_DIMENSION,
     SMOKE_TEST_VECTOR,

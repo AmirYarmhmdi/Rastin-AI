@@ -1,6 +1,6 @@
 # API Specification
 
-> This document defines the public REST API of OpenAgentLab.
+> This document defines the public REST API of Rastin-AI.
 >
 > The API follows a **Design First** approach. Endpoints are specified before implementation to ensure consistency, testability, and maintainability.
 >
@@ -92,7 +92,7 @@ Future versions may support:
 
 # Resource Model
 
-OpenAgentLab exposes the following resources:
+Rastin-AI exposes the following resources:
 
 - Sessions
 - Documents
@@ -571,7 +571,7 @@ GET
 
 # Trace Access
 
-OpenAgentLab does not currently expose a first-party `/traces/{trace_id}` API.
+Rastin-AI does not currently expose a first-party `/traces/{trace_id}` API.
 When Langfuse is enabled, the application persists the Langfuse trace reference
 on `workflow_executions.trace_id` and returns it through the workflow status
 APIs. Trace details are viewed in Langfuse.
@@ -624,7 +624,7 @@ Response
 ```json
 {
   "status": "ok",
-  "service": "OpenAgentLab",
+  "service": "Rastin-AI",
   "version": "0.1.0",
   "environment": "development"
 }
@@ -634,7 +634,7 @@ Response
 
 ```json
 {
-  "service": "OpenAgentLab",
+  "service": "Rastin-AI",
   "version": "0.1.0"
 }
 ```

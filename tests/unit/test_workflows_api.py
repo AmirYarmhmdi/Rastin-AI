@@ -4,7 +4,7 @@
 - Usage: Run this file with pytest when checking workflow endpoints.
 - Duties: Overrides workflow service and verifies recent-runs payload boundaries.
 - Depends on: External packages: fastapi.testclient. Project modules:
-  openagentlab.api.dependencies, services.workflows, and helpers.
+  rastin_ai.api.dependencies, services.workflows, and helpers.
 """
 
 from datetime import UTC, datetime
@@ -13,7 +13,7 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from helpers import create_isolated_app
 
-from openagentlab.services.workflows import WorkflowStatusRecord, WorkflowSummaryRecord
+from rastin_ai.services.workflows import WorkflowStatusRecord, WorkflowSummaryRecord
 
 WORKFLOW_ID = UUID("11111111-1111-4111-8111-111111111111")
 SESSION_ID = UUID("22222222-2222-4222-8222-222222222222")
@@ -54,7 +54,7 @@ class FakeWorkflowService:
 def test_list_workflows_returns_sidebar_metadata_only(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_workflow_status_service] = (
         lambda: FakeWorkflowService()
@@ -86,7 +86,7 @@ def test_list_workflows_returns_sidebar_metadata_only(monkeypatch) -> None:
 def test_get_workflow_can_return_full_result(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_workflow_status_service] = (
         lambda: FakeWorkflowService()

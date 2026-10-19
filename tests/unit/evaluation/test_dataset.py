@@ -3,12 +3,12 @@
 - Use: Tests evaluation dataset loading and validation behavior.
 - Usage: Run with pytest tests/unit/evaluation/test_dataset.py.
 - Duties: Verifies JSONL parsing, tag filtering, and actionable failures.
-- Depends on: Project modules: openagentlab.evaluation.dataset.
+- Depends on: Project modules: rastin_ai.evaluation.dataset.
 """
 
 import pytest
 
-from openagentlab.evaluation.dataset import (
+from rastin_ai.evaluation.dataset import (
     EvaluationDatasetError,
     load_evaluation_dataset,
 )

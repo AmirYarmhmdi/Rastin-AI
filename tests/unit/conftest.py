@@ -4,12 +4,12 @@
 - Usage: Pytest loads this file automatically for tests under tests/unit.
 - Duties: Keeps mutable runtime registries isolated between tests.
 - Depends on: External packages: pytest. Project modules:
-  openagentlab.tools.registry.
+  rastin_ai.tools.registry.
 """
 
 import pytest
 
-from openagentlab.tools.registry import _reset_runtime_registry_for_tests
+from rastin_ai.tools.registry import _reset_runtime_registry_for_tests
 
 
 @pytest.fixture(autouse=True)

@@ -25,7 +25,7 @@ Traditional logs are insufficient for debugging AI workflows.
 
 # Decision
 
-OpenAgentLab adopts **Langfuse** as the primary LLM observability platform.
+Rastin-AI adopts **Langfuse** as the primary LLM observability platform.
 
 Langfuse will collect execution traces for every workflow.
 

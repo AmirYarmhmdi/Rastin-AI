@@ -3,8 +3,8 @@
 - Use: Contains unit tests for excel workbook reader behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills.document_processing, and
-  openagentlab.skills.document_processing.tools.excel_workbook_reader.
+- Depends on: Project modules: rastin_ai.skills.document_processing, and
+  rastin_ai.skills.document_processing.tools.excel_workbook_reader.
 """
 
 from datetime import datetime
@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.excel_workbook_reader import (
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.excel_workbook_reader import (
     ExcelWorkbookReaderError,
     ExcelWorkbookReaderInput,
     ExcelWorkbookReaderTool,
@@ -36,7 +36,7 @@ def write_workbook(path: Path) -> None:
 
     workbook.properties.title = "Quarterly Workbook"
     workbook.properties.subject = "Workbook inspection"
-    workbook.properties.creator = "OpenAgentLab"
+    workbook.properties.creator = "Rastin-AI"
     workbook.properties.description = "Small deterministic workbook fixture."
     workbook.properties.created = datetime(2026, 8, 8, 9, 30, 0)
     workbook.properties.modified = datetime(2026, 8, 8, 10, 45, 0)
@@ -99,7 +99,7 @@ def test_excel_workbook_reader_returns_basic_workbook_metadata(
 
     assert result.metadata["title"] == "Quarterly Workbook"
     assert result.metadata["subject"] == "Workbook inspection"
-    assert result.metadata["creator"] == "OpenAgentLab"
+    assert result.metadata["creator"] == "Rastin-AI"
     assert result.metadata["description"] == "Small deterministic workbook fixture."
     assert result.metadata["created"] == "2026-08-08T09:30:00"
     assert result.metadata["modified"] is not None

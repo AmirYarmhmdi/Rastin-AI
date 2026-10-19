@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab requires persistent storage for structured application data.
+Rastin-AI requires persistent storage for structured application data.
 
 The platform needs to store:
 
@@ -32,7 +32,7 @@ The database should provide:
 
 # Decision
 
-OpenAgentLab adopts **PostgreSQL** as the primary relational database.
+Rastin-AI adopts **PostgreSQL** as the primary relational database.
 
 PostgreSQL stores application metadata only.
 

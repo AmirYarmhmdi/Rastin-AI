@@ -1,6 +1,6 @@
 # Non-Functional Requirements
 
-> This document defines the quality attributes of OpenAgentLab.
+> This document defines the quality attributes of Rastin-AI.
 >
 > While functional requirements describe **what the system does**, non-functional requirements define **how well the system should perform**.
 >
@@ -26,7 +26,7 @@
 
 # Quality Attributes
 
-OpenAgentLab is designed around the following quality attributes:
+Rastin-AI is designed around the following quality attributes:
 
 - Reliability
 - Performance
@@ -366,7 +366,7 @@ The first release should demonstrate:
 
 # Quality Philosophy
 
-OpenAgentLab prioritizes engineering quality over feature quantity.
+Rastin-AI prioritizes engineering quality over feature quantity.
 
 When trade-offs are required, the project favors:
 

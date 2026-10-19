@@ -4,8 +4,8 @@
 - Usage: Run this file with pytest when checking final response generation.
 - Duties: Uses fake OpenAI clients to verify grounded prompt boundaries.
 - Depends on: External packages: pydantic. Project modules:
-  openagentlab.agent.exceptions, openagentlab.agent.response_generator, and
-  openagentlab.core.config.
+  rastin_ai.agent.exceptions, rastin_ai.agent.response_generator, and
+  rastin_ai.core.config.
 """
 
 import inspect
@@ -15,16 +15,16 @@ from types import SimpleNamespace
 import pytest
 from pydantic import BaseModel
 
-import openagentlab.agent.response_generator as response_generator_module
-from openagentlab.agent.exceptions import ResponseGenerationError
-from openagentlab.agent.execution import (
+import rastin_ai.agent.response_generator as response_generator_module
+from rastin_ai.agent.exceptions import ResponseGenerationError
+from rastin_ai.agent.execution import (
     ExecutionResult,
     TaskRuntimeState,
     TaskStatus,
 )
-from openagentlab.agent.response_generator import OpenAIResponseGenerator
-from openagentlab.agent.schemas import ExecutionPlan, ExecutionTask
-from openagentlab.core.config import Settings
+from rastin_ai.agent.response_generator import OpenAIResponseGenerator
+from rastin_ai.agent.schemas import ExecutionPlan, ExecutionTask
+from rastin_ai.core.config import Settings
 
 
 class FakeResponsesAPI:
@@ -178,14 +178,14 @@ def test_openai_response_generator_serializes_pydantic_tool_result() -> None:
 
 
 def test_openai_response_generator_sends_no_tool_context() -> None:
-    responses = FakeResponsesAPI("OpenAgentLab orchestrates AI workflows.")
+    responses = FakeResponsesAPI("Rastin-AI orchestrates AI workflows.")
     generator = OpenAIResponseGenerator(
         model="fake-model",
         client=FakeOpenAIClient(responses),
     )
 
     generator.generate_response(
-        user_query="Explain OpenAgentLab.",
+        user_query="Explain Rastin-AI.",
         plan=["Answer directly."],
         tool_name=None,
         tool_result=None,

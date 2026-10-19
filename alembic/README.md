@@ -1,7 +1,7 @@
 # Alembic
 
 This folder contains database migration configuration and migration revisions for
-OpenAgentLab's PostgreSQL schema.
+Rastin-AI's PostgreSQL schema.
 
 ## What Is In This Folder
 
@@ -14,12 +14,12 @@ OpenAgentLab's PostgreSQL schema.
 ## General Role
 
 Alembic keeps the database schema synchronized with the application models under
-`src/openagentlab/database`. It is the bridge between source-controlled schema
+`src/rastin_ai/database`. It is the bridge between source-controlled schema
 intent and the actual PostgreSQL database used by the API, services, and tests.
 
 ## Typical Flow
 
-1. SQLAlchemy models change in `src/openagentlab/database/models`.
+1. SQLAlchemy models change in `src/rastin_ai/database/models`.
 2. A migration is created under `alembic/versions`.
 3. `uv run alembic upgrade head` applies the migration.
 4. The running application can read and write data using the new schema.

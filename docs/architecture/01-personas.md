@@ -1,6 +1,6 @@
 # Personas
 
-> This document defines the primary user personas of **OpenAgentLab**.
+> This document defines the primary user personas of **Rastin-AI**.
 >
 > Personas describe who the users are, what they are trying to accomplish, the types of information they work with, and the capabilities they expect from the platform.
 >
@@ -25,7 +25,7 @@
 
 # Persona Design Principles
 
-Personas in OpenAgentLab are **role-based**, not individual-based.
+Personas in Rastin-AI are **role-based**, not individual-based.
 
 They describe categories of knowledge workers with similar goals and workflows rather than fictional users.
 
@@ -370,7 +370,7 @@ Generate recommendation report
 
 # Cross-Persona Capabilities
 
-Regardless of the persona, OpenAgentLab should consistently provide:
+Regardless of the persona, Rastin-AI should consistently provide:
 
 - Reliable document understanding
 - Multi-document reasoning
@@ -394,6 +394,6 @@ These personas directly influence the design of:
 - RAG Pipeline
 - Evaluation Strategy
 
-Every major capability implemented in OpenAgentLab should support at least one documented persona.
+Every major capability implemented in Rastin-AI should support at least one documented persona.
 
 Capabilities that do not address a real user need should not be included in the MVP.

@@ -4,7 +4,7 @@
 - Usage: Run this file with pytest when checking Langfuse tracing boundaries.
 - Duties: Uses fakes to verify config, callbacks, spans, usage, and safe errors.
 - Depends on: Standard library test doubles. Project modules:
-  openagentlab.agent, openagentlab.core.config, and openagentlab.observability.
+  rastin_ai.agent, rastin_ai.core.config, and rastin_ai.observability.
 """
 
 import os
@@ -16,13 +16,13 @@ import pytest
 from helpers import clear_settings_env
 from pydantic import BaseModel, ConfigDict
 
-import openagentlab.observability.langfuse as langfuse_observability
-from openagentlab.agent.execution import ExecutionPlanExecutor, TaskStatus
-from openagentlab.agent.graph import ObservableAgentGraph
-from openagentlab.agent.response_generator import OpenAIResponseGenerator
-from openagentlab.agent.schemas import ExecutionPlan, ExecutionTask, LiteralArgument
-from openagentlab.core.config import Settings
-from openagentlab.observability import (
+import rastin_ai.observability.langfuse as langfuse_observability
+from rastin_ai.agent.execution import ExecutionPlanExecutor, TaskStatus
+from rastin_ai.agent.graph import ObservableAgentGraph
+from rastin_ai.agent.response_generator import OpenAIResponseGenerator
+from rastin_ai.agent.schemas import ExecutionPlan, ExecutionTask, LiteralArgument
+from rastin_ai.core.config import Settings
+from rastin_ai.observability import (
     is_observability_enabled,
     observed_span,
     safe_update_observation,
@@ -32,8 +32,8 @@ from openagentlab.observability import (
     usage_details_from_response,
     with_langgraph_callbacks,
 )
-from openagentlab.skills import CapabilityDefinition
-from openagentlab.tools.registry import register_capability
+from rastin_ai.skills import CapabilityDefinition
+from rastin_ai.tools.registry import register_capability
 
 
 class EmptyArguments(BaseModel):

@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab consists of multiple services:
+Rastin-AI consists of multiple services:
 
 - FastAPI
 - PostgreSQL
@@ -28,7 +28,7 @@ The deployment environment should remain consistent across:
 
 # Decision
 
-OpenAgentLab adopts **Docker** as the standard runtime environment.
+Rastin-AI adopts **Docker** as the standard runtime environment.
 
 Every service shall execute inside an isolated container.
 

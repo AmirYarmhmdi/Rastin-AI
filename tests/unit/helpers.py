@@ -28,7 +28,7 @@ SETTINGS_ENV_VARS = (
     "OPENAI_PLANNER_MODEL",
     "OPENAI_RESPONSE_MODEL",
     "OPENAI_EMBEDDING_MODEL",
-    "OPENAGENTLAB_TOOL_SELECTOR_MODEL",
+    "RASTIN_AI_TOOL_SELECTOR_MODEL",
     "RAG_EMBEDDING_DIMENSION",
     "RAG_CHUNK_SIZE",
     "RAG_CHUNK_OVERLAP",
@@ -79,7 +79,7 @@ def clear_settings_env(monkeypatch) -> None:
     for env_var in SETTINGS_ENV_VARS:
         monkeypatch.delenv(env_var, raising=False)
 
-    from openagentlab.core.config import get_settings
+    from rastin_ai.core.config import get_settings
 
     get_settings.cache_clear()
 
@@ -97,9 +97,9 @@ def _remove_module(module_name: str) -> None:
 def create_isolated_app(monkeypatch):
     clear_settings_env(monkeypatch)
 
-    from openagentlab.api import dependencies
-    from openagentlab.database.engine import get_engine
-    from openagentlab.database.session import get_session_factory
+    from rastin_ai.api import dependencies
+    from rastin_ai.database.engine import get_engine
+    from rastin_ai.database.session import get_session_factory
 
     dependencies._get_local_storage_provider.cache_clear()
     dependencies._get_azure_blob_storage_provider.cache_clear()
@@ -108,19 +108,23 @@ def create_isolated_app(monkeypatch):
 
     # Remove imported app modules so they reload with clean settings.
     for module_name in (
-        "openagentlab.main",
-        "openagentlab.api.router",
-        "openagentlab.api.v1.router",
-        "openagentlab.api.v1.endpoints.documents",
-        "openagentlab.api.v1.endpoints.health",
-        "openagentlab.api.v1.endpoints.messages",
-        "openagentlab.api.v1.endpoints.questions",
-        "openagentlab.api.v1.endpoints.sessions",
-        "openagentlab.api.v1.endpoints.workflows",
-        "openagentlab.api.dependencies",
+        "rastin_ai.main",
+        "rastin_ai.api.router",
+        "rastin_ai.api.v1.router",
+        "rastin_ai.api.v1.endpoints.documents",
+        "rastin_ai.api.v1.endpoints.health",
+        "rastin_ai.api.v1.endpoints.messages",
+        "rastin_ai.api.v1.endpoints.organizations",
+        "rastin_ai.api.v1.endpoints.project_documents",
+        "rastin_ai.api.v1.endpoints.project_sessions",
+        "rastin_ai.api.v1.endpoints.projects",
+        "rastin_ai.api.v1.endpoints.questions",
+        "rastin_ai.api.v1.endpoints.sessions",
+        "rastin_ai.api.v1.endpoints.workflows",
+        "rastin_ai.api.dependencies",
     ):
         _remove_module(module_name)
 
     # Import the main module again and build a fresh FastAPI app.
-    main = importlib.import_module("openagentlab.main")
+    main = importlib.import_module("rastin_ai.main")
     return main.create_app()

@@ -3,13 +3,13 @@
 - Use: Tests centralized evaluation threshold behavior.
 - Usage: Run with pytest tests/unit/evaluation/test_thresholds.py.
 - Duties: Ensures pass/fail comparisons and settings mapping stay deterministic.
-- Depends on: Project modules: openagentlab.evaluation.thresholds.
+- Depends on: Project modules: rastin_ai.evaluation.thresholds.
 """
 
 import pytest
 
-from openagentlab.core.config import Settings
-from openagentlab.evaluation.thresholds import (
+from rastin_ai.core.config import Settings
+from rastin_ai.evaluation.thresholds import (
     EvaluationThresholds,
     thresholds_from_settings,
 )

@@ -3,9 +3,9 @@
 - Use: Contains integration tests for qdrant rag pipeline behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.chunking.recursive,
-  openagentlab.rag.context.builder, openagentlab.rag.indexing,
-  openagentlab.rag.loaders.text, openagentlab.rag.retrieval.retriever, and 1 more.
+- Depends on: Project modules: rastin_ai.rag.chunking.recursive,
+  rastin_ai.rag.context.builder, rastin_ai.rag.indexing,
+  rastin_ai.rag.loaders.text, rastin_ai.rag.retrieval.retriever, and 1 more.
 """
 
 import os
@@ -14,14 +14,14 @@ from pathlib import Path
 
 import pytest
 
-from openagentlab.rag.chunking.recursive import RecursiveTextChunker
-from openagentlab.rag.context.builder import ContextBuilder
-from openagentlab.rag.indexing import DocumentIndexer
-from openagentlab.rag.loaders.text import TextFileLoader
-from openagentlab.rag.retrieval.retriever import Retriever
-from openagentlab.rag.vectorstores.qdrant import QdrantVectorStore
+from rastin_ai.rag.chunking.recursive import RecursiveTextChunker
+from rastin_ai.rag.context.builder import ContextBuilder
+from rastin_ai.rag.indexing import DocumentIndexer
+from rastin_ai.rag.loaders.text import TextFileLoader
+from rastin_ai.rag.retrieval.retriever import Retriever
+from rastin_ai.rag.vectorstores.qdrant import QdrantVectorStore
 
-TEST_QDRANT_URL = os.environ.get("OPENAGENTLAB_TEST_QDRANT_URL")
+TEST_QDRANT_URL = os.environ.get("RASTIN_AI_TEST_QDRANT_URL")
 
 
 class KeywordEmbeddingProvider:
@@ -44,7 +44,7 @@ class KeywordEmbeddingProvider:
 
 @pytest.mark.skipif(
     not TEST_QDRANT_URL,
-    reason="OPENAGENTLAB_TEST_QDRANT_URL is required for Qdrant integration tests.",
+    reason="RASTIN_AI_TEST_QDRANT_URL is required for Qdrant integration tests.",
 )
 def test_document_to_qdrant_to_retrieval_context(tmp_path: Path) -> None:
     from qdrant_client import QdrantClient

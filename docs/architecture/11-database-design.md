@@ -1,8 +1,8 @@
 # Database Design
 
-> This document defines the persistence architecture of OpenAgentLab.
+> This document defines the persistence architecture of Rastin-AI.
 >
-> Rather than relying on a single database, OpenAgentLab uses multiple specialized storage systems.
+> Rather than relying on a single database, Rastin-AI uses multiple specialized storage systems.
 >
 > Each storage technology is responsible for a specific type of data.
 
@@ -27,7 +27,7 @@
 
 # Persistence Philosophy
 
-OpenAgentLab separates data according to its characteristics.
+Rastin-AI separates data according to its characteristics.
 
 | Storage | Responsibility |
 |----------|----------------|
@@ -43,7 +43,7 @@ This separation improves scalability, maintainability, and performance.
 # Persistence Overview
 
 ```text
-                    OpenAgentLab
+                    Rastin-AI
 
                           │
 
@@ -262,7 +262,7 @@ payloads.
 
 Purpose
 
-Represents the logical document resource used by OpenAgentLab workflows.
+Represents the logical document resource used by Rastin-AI workflows.
 
 Fields
 

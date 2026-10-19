@@ -3,9 +3,9 @@
 - Use: Contains unit tests for the OpenAI-backed planner adapter.
 - Usage: Run this file with pytest when checking planner SDK integration.
 - Duties: Uses fake OpenAI clients to verify ExecutionPlan structured output.
-- Depends on: Project modules: openagentlab.agent.exceptions,
-  openagentlab.agent.planner, openagentlab.agent.schemas, and
-  openagentlab.core.config. Project modules: openagentlab.skills.capabilities.
+- Depends on: Project modules: rastin_ai.agent.exceptions,
+  rastin_ai.agent.planner, rastin_ai.agent.schemas, and
+  rastin_ai.core.config. Project modules: rastin_ai.skills.capabilities.
 """
 
 import inspect
@@ -13,12 +13,12 @@ from types import SimpleNamespace
 
 import pytest
 
-import openagentlab.agent.planner as planner_module
-from openagentlab.agent.exceptions import PlannerError
-from openagentlab.agent.planner import OpenAIPlanner
-from openagentlab.agent.schemas import ExecutionPlan, ExecutionTask, LiteralArgument
-from openagentlab.core.config import Settings
-from openagentlab.skills.capabilities import CapabilityPromptView
+import rastin_ai.agent.planner as planner_module
+from rastin_ai.agent.exceptions import PlannerError
+from rastin_ai.agent.planner import OpenAIPlanner
+from rastin_ai.agent.schemas import ExecutionPlan, ExecutionTask, LiteralArgument
+from rastin_ai.core.config import Settings
+from rastin_ai.skills.capabilities import CapabilityPromptView
 
 
 class FakeResponsesAPI:

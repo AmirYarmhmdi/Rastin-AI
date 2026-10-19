@@ -12,7 +12,7 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from helpers import create_isolated_app
 
-from openagentlab.services.conversations import (
+from rastin_ai.services.conversations import (
     ConversationMessageView,
     ConversationSessionNotFoundError,
     ConversationSessionSummary,
@@ -80,7 +80,7 @@ class FakeConversationService:
 def test_list_sessions_returns_recent_sessions(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_conversation_service] = (
         lambda: FakeConversationService()
@@ -106,7 +106,7 @@ def test_list_sessions_returns_recent_sessions(monkeypatch) -> None:
 def test_get_session_returns_ordered_messages(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_conversation_service] = (
         lambda: FakeConversationService()
@@ -142,7 +142,7 @@ def test_get_session_returns_ordered_messages(monkeypatch) -> None:
 def test_get_session_rejects_unknown_session(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_conversation_service] = (
         lambda: FakeConversationService()

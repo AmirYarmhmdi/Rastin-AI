@@ -3,15 +3,15 @@
 - Use: Contains unit tests for document processing skill behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills,
-  openagentlab.skills.document_processing, and openagentlab.skills.registry.
+- Depends on: Project modules: rastin_ai.skills,
+  rastin_ai.skills.document_processing, and rastin_ai.skills.registry.
 """
 
 import pytest
 
-from openagentlab.skills import SkillMetadata, SkillRegistry
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.registry import DuplicateCapabilityError, DuplicateSkillError
+from rastin_ai.skills import SkillMetadata, SkillRegistry
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.registry import DuplicateCapabilityError, DuplicateSkillError
 
 
 def test_skill_metadata_can_be_created() -> None:

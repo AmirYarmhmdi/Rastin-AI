@@ -3,9 +3,9 @@
 - Use: Contains unit tests for docx reader behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills.document_processing,
-  openagentlab.skills.document_processing.tools.docx_reader, and
-  openagentlab.skills.tool.
+- Depends on: Project modules: rastin_ai.skills.document_processing,
+  rastin_ai.skills.document_processing.tools.docx_reader, and
+  rastin_ai.skills.tool.
 """
 
 import json
@@ -15,14 +15,14 @@ from pathlib import Path
 import pytest
 from docx import Document
 
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.docx_reader import (
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.docx_reader import (
     DOCXReaderError,
     DOCXReaderInput,
     DOCXReaderOutput,
     DOCXReaderTool,
 )
-from openagentlab.skills.tool import BaseTool
+from rastin_ai.skills.tool import BaseTool
 
 
 def write_docx(path: Path) -> None:
@@ -49,7 +49,7 @@ def write_docx(path: Path) -> None:
     properties = document.core_properties
     properties.title = "DOCX Fixture"
     properties.subject = "Document Processing"
-    properties.author = "OpenAgentLab"
+    properties.author = "Rastin-AI"
     properties.category = "Tests"
     properties.comments = "Small fixture"
     properties.keywords = "docx,reader"
@@ -164,7 +164,7 @@ def test_docx_reader_returns_basic_metadata_as_serializable_values(
 
     assert result.metadata["title"] == "DOCX Fixture"
     assert result.metadata["subject"] == "Document Processing"
-    assert result.metadata["author"] == "OpenAgentLab"
+    assert result.metadata["author"] == "Rastin-AI"
     assert result.metadata["category"] == "Tests"
     assert result.metadata["comments"] == "Small fixture"
     assert result.metadata["keywords"] == "docx,reader"

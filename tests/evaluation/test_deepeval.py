@@ -4,8 +4,8 @@ import os
 
 import pytest
 
-from openagentlab.evaluation.dataset import load_evaluation_dataset
-from openagentlab.evaluation.thresholds import EvaluationThresholds
+from rastin_ai.evaluation.dataset import load_evaluation_dataset
+from rastin_ai.evaluation.thresholds import EvaluationThresholds
 
 pytestmark = pytest.mark.evaluation
 
@@ -23,7 +23,7 @@ def test_deepeval_smoke_dataset() -> None:
         HallucinationMetric,
     )
 
-    from openagentlab.evaluation.deepeval_evaluator import build_deepeval_test_case
+    from rastin_ai.evaluation.deepeval_evaluator import build_deepeval_test_case
 
     cases = load_evaluation_dataset(
         "evaluation/datasets/smoke.jsonl",

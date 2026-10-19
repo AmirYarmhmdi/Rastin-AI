@@ -3,10 +3,10 @@ name: Evaluation
 on:
   pull_request:
     paths:
-      - "src/openagentlab/agent/**"
-      - "src/openagentlab/evaluation/**"
-      - "src/openagentlab/rag/**"
-      - "src/openagentlab/tools/**"
+      - "src/rastin_ai/agent/**"
+      - "src/rastin_ai/evaluation/**"
+      - "src/rastin_ai/rag/**"
+      - "src/rastin_ai/tools/**"
       - "tests/evaluation/**"
       - "tests/unit/evaluation/**"
       - "evaluation/**"
@@ -16,10 +16,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/openagentlab/agent/**"
-      - "src/openagentlab/evaluation/**"
-      - "src/openagentlab/rag/**"
-      - "src/openagentlab/tools/**"
+      - "src/rastin_ai/agent/**"
+      - "src/rastin_ai/evaluation/**"
+      - "src/rastin_ai/rag/**"
+      - "src/rastin_ai/tools/**"
       - "tests/evaluation/**"
       - "tests/unit/evaluation/**"
       - "evaluation/**"
@@ -48,7 +48,7 @@ jobs:
       - run: uv sync --locked --group dev
       - run: mkdir -p evaluation-results
       - name: Validate smoke dataset
-        run: uv run python -m openagentlab.evaluation validate --dataset evaluation/datasets/smoke.jsonl --tags smoke | tee evaluation-results/dataset-validation.json
+        run: uv run python -m rastin_ai.evaluation validate --dataset evaluation/datasets/smoke.jsonl --tags smoke | tee evaluation-results/dataset-validation.json
       - name: Upload dataset validation result
         uses: actions/upload-artifact@v4
         if: always()
@@ -80,7 +80,7 @@ jobs:
         run: uv run pytest -m evaluation tests/evaluation -v --junitxml=evaluation-results/deepeval-junit.xml
       - name: Run Ragas smoke evaluation
         if: ${{ env.OPENAI_API_KEY != '' }}
-        run: uv run python -m openagentlab.evaluation ragas --dataset evaluation/datasets/smoke.jsonl --tags smoke | tee evaluation-results/ragas-summary.json
+        run: uv run python -m rastin_ai.evaluation ragas --dataset evaluation/datasets/smoke.jsonl --tags smoke | tee evaluation-results/ragas-summary.json
       - name: Upload LLM evaluation results
         uses: actions/upload-artifact@v4
         if: always()

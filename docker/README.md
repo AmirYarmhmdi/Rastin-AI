@@ -1,21 +1,21 @@
 # Docker Runtime
 
-The root `Dockerfile` builds the OpenAgentLab application image. The root
-`docker-compose.yml` runs the local development stack: OpenAgentLab, PostgreSQL,
+The root `Dockerfile` builds the Rastin-AI application image. The root
+`docker-compose.yml` runs the local development stack: Rastin-AI, PostgreSQL,
 Qdrant, Langfuse, ClickHouse, Redis, and MinIO.
 
 ## Local Compose Matrix
 
 | Concern | Compose setting | Container setting |
 | --- | --- | --- |
-| API bind | `COMPOSE_OPENAGENTLAB_BIND_HOST`, `COMPOSE_OPENAGENTLAB_PORT` | `HOST=0.0.0.0`, `PORT=8000` |
+| API bind | `COMPOSE_RASTIN_AI_BIND_HOST`, `COMPOSE_RASTIN_AI_PORT` | `HOST=0.0.0.0`, `PORT=8000` |
 | PostgreSQL | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | `DATABASE_URL=postgresql+asyncpg://...@postgres:5432/...` |
 | Qdrant | `COMPOSE_QDRANT_BIND_HOST` | `QDRANT_URL=http://qdrant:6333` |
-| Local storage | named volume `openagentlab_storage` | `STORAGE_BACKEND=local`, `LOCAL_STORAGE_ROOT=/app/storage` |
+| Local storage | named volume `rastin_ai_storage` | `STORAGE_BACKEND=local`, `LOCAL_STORAGE_ROOT=/app/storage` |
 | Langfuse tracing | `LANGFUSE_*` project keys | Optional; disabled unless `LANGFUSE_ENABLED=true` and keys are present |
 
 The app container receives canonical application variable names from
-`openagentlab.core.config.Settings`. Compose-only variables are used only for
+`rastin_ai.core.config.Settings`. Compose-only variables are used only for
 host port binding and local support services.
 
 ## Commands
@@ -29,7 +29,7 @@ docker compose up -d --build
 Run migrations explicitly after PostgreSQL is healthy:
 
 ```bash
-docker compose run --rm openagentlab uv run alembic upgrade head
+docker compose run --rm rastin-ai uv run alembic upgrade head
 ```
 
 Check health:

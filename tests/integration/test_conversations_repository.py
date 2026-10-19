@@ -1,7 +1,7 @@
 """File guide.
 
 - Use: Optional PostgreSQL integration coverage for conversation persistence.
-- Usage: Set OPENAGENTLAB_TEST_DATABASE_URL to a *_test database and run pytest.
+- Usage: Set RASTIN_AI_TEST_DATABASE_URL to a *_test database and run pytest.
 - Duties: Verifies real session/message/reference persistence in PostgreSQL.
 - Depends on: External packages pytest/sqlalchemy and project database/repositories.
 """
@@ -14,24 +14,24 @@ import pytest
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
-from openagentlab.database import Base
-from openagentlab.database.engine import create_database_engine
-from openagentlab.database.enums import (
+from rastin_ai.database import Base
+from rastin_ai.database.engine import create_database_engine
+from rastin_ai.database.enums import (
     ConversationMessageRole,
     ConversationMessageStatus,
 )
-from openagentlab.database.models.conversation_session import ConversationSession
-from openagentlab.database.models.document import Document
-from openagentlab.database.models.file_metadata import FileMetadata
-from openagentlab.database.models.user import User
-from openagentlab.database.session import create_session_factory
-from openagentlab.repositories.conversations import (
+from rastin_ai.database.models.conversation_session import ConversationSession
+from rastin_ai.database.models.document import Document
+from rastin_ai.database.models.file_metadata import FileMetadata
+from rastin_ai.database.models.user import User
+from rastin_ai.database.session import create_session_factory
+from rastin_ai.repositories.conversations import (
     ConversationDocumentReferenceCreate,
     ConversationMessageCreate,
     SQLAlchemyConversationRepository,
 )
 
-TEST_DATABASE_URL = os.environ.get("OPENAGENTLAB_TEST_DATABASE_URL")
+TEST_DATABASE_URL = os.environ.get("RASTIN_AI_TEST_DATABASE_URL")
 DOCUMENT_ID = UUID("11111111-1111-4111-8111-111111111111")
 FILE_METADATA_ID = UUID("12121212-1212-4121-8121-121212121212")
 USER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
@@ -39,10 +39,10 @@ USER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 
 def test_conversation_repository_persists_ordered_messages_and_references() -> None:
     if not TEST_DATABASE_URL:
-        pytest.skip("OPENAGENTLAB_TEST_DATABASE_URL is required for this test.")
+        pytest.skip("RASTIN_AI_TEST_DATABASE_URL is required for this test.")
     if not _is_safe_test_database_url(TEST_DATABASE_URL):
         pytest.skip(
-            "OPENAGENTLAB_TEST_DATABASE_URL must point to a database ending in _test.",
+            "RASTIN_AI_TEST_DATABASE_URL must point to a database ending in _test.",
         )
 
     asyncio.run(_run_repository_test())

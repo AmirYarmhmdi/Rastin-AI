@@ -3,8 +3,8 @@
 - Use: Contains unit tests for csv reader behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.skills.document_processing, and
-  openagentlab.skills.document_processing.tools.csv_reader.
+- Depends on: Project modules: rastin_ai.skills.document_processing, and
+  rastin_ai.skills.document_processing.tools.csv_reader.
 """
 
 from pathlib import Path
@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from openagentlab.skills.document_processing import DocumentProcessingSkill
-from openagentlab.skills.document_processing.tools.csv_reader import (
+from rastin_ai.skills.document_processing import DocumentProcessingSkill
+from rastin_ai.skills.document_processing.tools.csv_reader import (
     CSVReaderError,
     CSVReaderInput,
     CSVReaderTool,

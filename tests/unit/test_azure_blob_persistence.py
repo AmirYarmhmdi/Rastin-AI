@@ -3,18 +3,18 @@
 - Use: Contains unit tests for Azure Blob persistence verification.
 - Usage: Run this file with pytest when checking persistence-test behavior.
 - Duties: Uses fake storage providers to verify write/read/delete operations.
-- Depends on: Project modules: openagentlab.storage.azure_blob_persistence and
-  openagentlab.storage.base.
+- Depends on: Project modules: rastin_ai.storage.azure_blob_persistence and
+  rastin_ai.storage.base.
 """
 
 import pytest
 
-from openagentlab.storage.azure_blob_persistence import (
+from rastin_ai.storage.azure_blob_persistence import (
     PERSISTENCE_TEST_CONTENT,
     StoragePersistenceTestError,
     run_storage_provider_persistence_operation,
 )
-from openagentlab.storage.base import StoredObject
+from rastin_ai.storage.base import StoredObject
 
 
 class FakeStorageProvider:

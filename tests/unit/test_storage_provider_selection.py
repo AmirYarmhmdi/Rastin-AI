@@ -4,8 +4,8 @@
 - Usage: Run this file with pytest when checking storage backend wiring.
 - Duties: Builds settings and fake providers to check explicit backend behavior.
 - Depends on: External packages only: pytest. Project modules:
-  openagentlab.api.dependencies, openagentlab.core.config, and
-  openagentlab.storage.local.
+  rastin_ai.api.dependencies, rastin_ai.core.config, and
+  rastin_ai.storage.local.
 """
 
 from types import SimpleNamespace
@@ -13,9 +13,9 @@ from types import SimpleNamespace
 import pytest
 from helpers import clear_settings_env
 
-from openagentlab.api import dependencies
-from openagentlab.core.config import Settings
-from openagentlab.storage.local import LocalStorageProvider
+from rastin_ai.api import dependencies
+from rastin_ai.core.config import Settings
+from rastin_ai.storage.local import LocalStorageProvider
 
 
 class FakeAzureBlobStorageProvider:
@@ -60,8 +60,8 @@ def test_get_storage_provider_selects_azure_blob(monkeypatch) -> None:
     )
     settings = Settings(
         STORAGE_BACKEND="azure_blob",
-        AZURE_STORAGE_ACCOUNT_NAME=" openagentlabstorage ",
-        AZURE_STORAGE_CONTAINER_NAME=" openagentlab-files ",
+        AZURE_STORAGE_ACCOUNT_NAME=" rastinaistorage ",
+        AZURE_STORAGE_CONTAINER_NAME=" rastin-ai-files ",
         AZURE_STORAGE_MANAGED_IDENTITY_CLIENT_ID=(
             "11111111-1111-4111-8111-111111111111"
         ),
@@ -70,8 +70,8 @@ def test_get_storage_provider_selects_azure_blob(monkeypatch) -> None:
     provider = dependencies.get_storage_provider(settings)
 
     assert isinstance(provider, FakeAzureBlobStorageProvider)
-    assert provider.account_name == "openagentlabstorage"
-    assert provider.container_name == "openagentlab-files"
+    assert provider.account_name == "rastinaistorage"
+    assert provider.container_name == "rastin-ai-files"
     assert provider.managed_identity_client_id == "11111111-1111-4111-8111-111111111111"
 
 
@@ -86,8 +86,8 @@ def test_get_storage_provider_requires_azure_blob_config(
     clear_settings_env(monkeypatch)
     values = {
         "STORAGE_BACKEND": "azure_blob",
-        "AZURE_STORAGE_ACCOUNT_NAME": "openagentlabstorage",
-        "AZURE_STORAGE_CONTAINER_NAME": "openagentlab-files",
+        "AZURE_STORAGE_ACCOUNT_NAME": "rastinaistorage",
+        "AZURE_STORAGE_CONTAINER_NAME": "rastin-ai-files",
     }
     values[missing_setting] = None
     settings = Settings(**values)

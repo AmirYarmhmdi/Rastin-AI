@@ -3,24 +3,24 @@
 - Use: Contains unit tests for initial LangGraph workflow behavior.
 - Usage: Run this file with pytest when checking complete agent graph paths.
 - Duties: Registers test tools, invokes the graph, and checks path outputs.
-- Depends on: Project modules: openagentlab.agent.graph and
-  openagentlab.tools.registry.
+- Depends on: Project modules: rastin_ai.agent.graph and
+  rastin_ai.tools.registry.
 """
 
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from openagentlab.agent.execution import TaskStatus
-from openagentlab.agent.graph import create_agent_graph
-from openagentlab.agent.schemas import (
+from rastin_ai.agent.execution import TaskStatus
+from rastin_ai.agent.graph import create_agent_graph
+from rastin_ai.agent.schemas import (
     ExecutionPlan,
     ExecutionTask,
     LiteralArgument,
     ToolSelection,
 )
-from openagentlab.skills import CapabilityDefinition
-from openagentlab.tools.registry import register_capability
+from rastin_ai.skills import CapabilityDefinition
+from rastin_ai.tools.registry import register_capability
 
 
 class FakePlanner:

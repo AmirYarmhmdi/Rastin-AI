@@ -3,17 +3,17 @@
 - Use: Contains unit tests for embeddings behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.core.config,
-  openagentlab.rag.embeddings.openai, and openagentlab.rag.exceptions.
+- Depends on: Project modules: rastin_ai.core.config,
+  rastin_ai.rag.embeddings.openai, and rastin_ai.rag.exceptions.
 """
 
 from types import SimpleNamespace
 
 import pytest
 
-from openagentlab.core.config import Settings
-from openagentlab.rag.embeddings.openai import OpenAIEmbeddingProvider
-from openagentlab.rag.exceptions import EmbeddingError
+from rastin_ai.core.config import Settings
+from rastin_ai.rag.embeddings.openai import OpenAIEmbeddingProvider
+from rastin_ai.rag.exceptions import EmbeddingError
 
 
 class FakeEmbeddingsAPI:

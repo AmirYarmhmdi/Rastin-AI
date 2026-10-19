@@ -4,14 +4,14 @@
 - Usage: Run this file with pytest when checking Azure storage behavior.
 - Duties: Builds fake Azure clients and checks provider semantics.
 - Depends on: External packages: azure-core, and pytest. Project modules:
-  openagentlab.storage.azure_blob, and openagentlab.storage.exceptions.
+  rastin_ai.storage.azure_blob, and rastin_ai.storage.exceptions.
 """
 
 import pytest
 from azure.core.exceptions import ResourceNotFoundError
 
-from openagentlab.storage.azure_blob import AzureBlobStorageProvider
-from openagentlab.storage.exceptions import (
+from rastin_ai.storage.azure_blob import AzureBlobStorageProvider
+from rastin_ai.storage.exceptions import (
     InvalidStorageKeyError,
     StorageObjectNotFoundError,
 )
@@ -72,8 +72,8 @@ def container_client() -> FakeContainerClient:
 @pytest.fixture
 def provider(container_client: FakeContainerClient):
     azure_provider = AzureBlobStorageProvider(
-        account_name="openagentlabstorage",
-        container_name="openagentlab-files",
+        account_name="rastinaistorage",
+        container_name="rastin-ai-files",
         managed_identity_client_id="11111111-1111-4111-8111-111111111111",
         container_client=container_client,
     )
@@ -86,7 +86,7 @@ def provider(container_client: FakeContainerClient):
 def test_azure_blob_storage_saves_and_reads_binary_data(
     provider: AzureBlobStorageProvider,
 ) -> None:
-    content = b"\x00openagentlab\xff"
+    content = b"\x00rastin_ai\xff"
 
     stored = provider.save("files/file-1/content.pdf", content)
 
@@ -157,8 +157,8 @@ def test_azure_blob_storage_rejects_path_traversal_and_unsafe_keys(
 @pytest.mark.parametrize(
     ("account_name", "container_name", "message"),
     (
-        ("", "openagentlab-files", "account name"),
-        ("openagentlabstorage", "", "container name"),
+        ("", "rastin-ai-files", "account name"),
+        ("rastinaistorage", "", "container name"),
     ),
 )
 def test_azure_blob_storage_requires_account_and_container_config(

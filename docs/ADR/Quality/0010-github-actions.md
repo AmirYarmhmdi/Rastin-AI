@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab requires automated validation for every code change.
+Rastin-AI requires automated validation for every code change.
 
 Continuous Integration should verify:
 
@@ -25,7 +25,7 @@ The CI platform should integrate naturally with GitHub.
 
 # Decision
 
-OpenAgentLab adopts **GitHub Actions** as the Continuous Integration platform.
+Rastin-AI adopts **GitHub Actions** as the Continuous Integration platform.
 
 Every Pull Request shall trigger automated validation.
 

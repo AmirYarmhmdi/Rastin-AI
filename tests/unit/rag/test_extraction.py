@@ -14,7 +14,7 @@ import pytest
 from docx import Document as DOCXDocument
 from openpyxl import Workbook
 
-from openagentlab.rag.extraction import (
+from rastin_ai.rag.extraction import (
     EMPTY_DOCUMENT,
     MALFORMED_DOCX,
     MALFORMED_JSON,

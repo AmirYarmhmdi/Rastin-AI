@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab requires a Large Language Model capable of orchestrating deterministic analytical workflows.
+Rastin-AI requires a Large Language Model capable of orchestrating deterministic analytical workflows.
 
 The selected provider should support:
 
@@ -25,7 +25,7 @@ The LLM is responsible for reasoning and orchestration rather than deterministic
 
 # Decision
 
-OpenAgentLab adopts **OpenAI** as the primary LLM provider for the MVP.
+Rastin-AI adopts **OpenAI** as the primary LLM provider for the MVP.
 
 OpenAI will be used for:
 

@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADR)
 
-This directory contains the Architecture Decision Records (ADRs) for OpenAgentLab.
+This directory contains the Architecture Decision Records (ADRs) for Rastin-AI.
 
 Each ADR documents a significant architectural decision made during the design of the system.
 

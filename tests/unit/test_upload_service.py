@@ -3,9 +3,9 @@
 - Use: Contains unit tests for upload service behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.database.enums,
-  openagentlab.repositories.documents, openagentlab.services.upload,
-  openagentlab.storage.base, and openagentlab.storage.exceptions.
+- Depends on: Project modules: rastin_ai.database.enums,
+  rastin_ai.repositories.documents, rastin_ai.services.upload,
+  rastin_ai.storage.base, and rastin_ai.storage.exceptions.
 """
 
 import asyncio
@@ -16,19 +16,19 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from openagentlab.database.enums import DocumentStatus, FileStorageStatus
-from openagentlab.repositories.documents import (
+from rastin_ai.database.enums import DocumentStatus, FileStorageStatus
+from rastin_ai.repositories.documents import (
     UploadedDocumentCreate,
     UploadedDocumentRecord,
 )
-from openagentlab.services.upload import (
+from rastin_ai.services.upload import (
     UnsupportedUploadFileTypeError,
     UploadInput,
     UploadService,
     UploadTooLargeError,
 )
-from openagentlab.storage.base import StoredObject
-from openagentlab.storage.exceptions import StorageError
+from rastin_ai.storage.base import StoredObject
+from rastin_ai.storage.exceptions import StorageError
 
 USER_ID = UUID("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 

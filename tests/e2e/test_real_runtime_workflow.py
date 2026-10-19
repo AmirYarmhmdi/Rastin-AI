@@ -1,7 +1,7 @@
 """File guide.
 
-- Use: End-to-end tests for OpenAgentLab's real API/runtime infrastructure.
-- Usage: Run with OPENAGENTLAB_E2E=1 and disposable Postgres/Qdrant services.
+- Use: End-to-end tests for Rastin-AI's real API/runtime infrastructure.
+- Usage: Run with RASTIN_AI_E2E=1 and disposable Postgres/Qdrant services.
 - Duties: Proves upload, indexing, RAG, conversations, routing, and failure
   isolation across public API, PostgreSQL, local storage, and Qdrant.
 - Depends on: External services PostgreSQL/Qdrant. Project modules: API,
@@ -26,48 +26,57 @@ from alembic.config import Config
 from fastapi import Depends
 from fastapi.testclient import TestClient
 from qdrant_client import QdrantClient
+from qdrant_client import models as qdrant_models
 from sqlalchemy import func, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
 from alembic import command
-from openagentlab.database.engine import create_database_engine, get_engine
-from openagentlab.database.enums import DocumentStatus, WorkflowExecutionStatus
-from openagentlab.database.models.conversation_message import ConversationMessage
-from openagentlab.database.models.conversation_message_document import (
+from rastin_ai.database.engine import create_database_engine, get_engine
+from rastin_ai.database.enums import (
+    DocumentScope,
+    DocumentStatus,
+    WorkflowExecutionStatus,
+)
+from rastin_ai.database.models.conversation_message import ConversationMessage
+from rastin_ai.database.models.conversation_message_document import (
     ConversationMessageDocument,
 )
-from openagentlab.database.models.document import Document as DocumentModel
-from openagentlab.database.models.file_metadata import FileMetadata
-from openagentlab.database.models.user import User
-from openagentlab.database.models.workflow_execution import WorkflowExecution
-from openagentlab.database.session import create_session_factory, get_session_factory
-from openagentlab.rag.chunking.recursive import RecursiveTextChunker
-from openagentlab.rag.context.builder import ContextBuilder
-from openagentlab.rag.indexing import DocumentIndexer
-from openagentlab.rag.retrieval.retriever import Retriever
-from openagentlab.rag.vectorstores.qdrant import QdrantVectorStore
-from openagentlab.security.auth import AuthenticatedPrincipal
-from openagentlab.services.document_ingestion import (
+from rastin_ai.database.models.document import Document as DocumentModel
+from rastin_ai.database.models.file_metadata import FileMetadata
+from rastin_ai.database.models.user import User
+from rastin_ai.database.models.workflow_execution import WorkflowExecution
+from rastin_ai.database.session import create_session_factory, get_session_factory
+from rastin_ai.rag.chunking.recursive import RecursiveTextChunker
+from rastin_ai.rag.context.builder import ContextBuilder
+from rastin_ai.rag.indexing import DocumentIndexer
+from rastin_ai.rag.retrieval.retriever import Retriever
+from rastin_ai.rag.vectorstores.qdrant import QdrantVectorStore
+from rastin_ai.security.auth import AuthenticatedPrincipal
+from rastin_ai.services.document_ingestion import (
     DocumentIngestionService,
     SynchronousDocumentIngestionService,
 )
-from openagentlab.services.documents import DocumentService
-from openagentlab.services.questions import (
+from rastin_ai.services.documents import DocumentService
+from rastin_ai.services.project_documents import (
+    ProjectDocumentService,
+    StoredProjectDocumentService,
+)
+from rastin_ai.services.questions import (
     QuestionAnsweringService,
     RAGQuestionAnsweringService,
 )
-from openagentlab.storage.local import LocalStorageProvider
+from rastin_ai.storage.local import LocalStorageProvider
 
 pytestmark = pytest.mark.e2e
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TEST_DATABASE_URL = os.environ.get("OPENAGENTLAB_TEST_DATABASE_URL")
-TEST_QDRANT_URL = os.environ.get("OPENAGENTLAB_TEST_QDRANT_URL")
-E2E_ENABLED = os.environ.get("OPENAGENTLAB_E2E") == "1"
-AUTH_ISSUER = "https://issuer.e2e.openagentlab.test"
-AUTH_AUDIENCE = "openagentlab-e2e"
-AUTH_SECRET = "openagentlab-e2e-dev-secret-at-least-32-bytes"
+TEST_DATABASE_URL = os.environ.get("RASTIN_AI_TEST_DATABASE_URL")
+TEST_QDRANT_URL = os.environ.get("RASTIN_AI_TEST_QDRANT_URL")
+E2E_ENABLED = os.environ.get("RASTIN_AI_E2E") == "1"
+AUTH_ISSUER = "https://issuer.e2e.rastin_ai.test"
+AUTH_AUDIENCE = "rastin-ai-e2e"
+AUTH_SECRET = "rastin-ai-e2e-dev-secret-at-least-32-bytes"
 
 
 class KeywordEmbeddingProvider:
@@ -187,7 +196,7 @@ def e2e_runtime(monkeypatch, tmp_path: Path) -> Iterator[E2ERuntime]:
     assert TEST_DATABASE_URL is not None
     assert TEST_QDRANT_URL is not None
 
-    collection_name = f"openagentlab_e2e_{uuid.uuid4().hex}"
+    collection_name = f"rastin_ai_e2e_{uuid.uuid4().hex}"
     storage_root = tmp_path / "storage"
     recorder = E2ERecorder()
 
@@ -222,8 +231,8 @@ def e2e_runtime(monkeypatch, tmp_path: Path) -> Iterator[E2ERuntime]:
     _delete_qdrant_collection(TEST_QDRANT_URL, collection_name)
     _reset_app_modules()
 
-    main = importlib.import_module("openagentlab.main")
-    dependencies = importlib.import_module("openagentlab.api.dependencies")
+    main = importlib.import_module("rastin_ai.main")
+    dependencies = importlib.import_module("rastin_ai.api.dependencies")
     app = main.create_app()
     storage = LocalStorageProvider(storage_root)
     settings_dependency = Depends(dependencies.get_settings)
@@ -233,6 +242,10 @@ def e2e_runtime(monkeypatch, tmp_path: Path) -> Iterator[E2ERuntime]:
     workflow_repository_dependency = Depends(
         dependencies.get_workflow_execution_repository
     )
+    project_document_repository_dependency = Depends(
+        dependencies.get_project_document_repository
+    )
+    authorization_service_dependency = Depends(dependencies.get_authorization_service)
     principal_dependency = Depends(dependencies.get_current_principal)
 
     def override_storage_provider() -> LocalStorageProvider:
@@ -276,6 +289,30 @@ def e2e_runtime(monkeypatch, tmp_path: Path) -> Iterator[E2ERuntime]:
             top_k=settings.RAG_RETRIEVAL_TOP_K,
         )
 
+    def override_project_document_service(
+        settings=settings_dependency,
+        storage_provider=storage_provider_dependency,
+        project_document_repository=project_document_repository_dependency,
+        authorization_service=authorization_service_dependency,
+    ) -> ProjectDocumentService:
+        return StoredProjectDocumentService(
+            storage_provider=storage_provider,
+            project_document_repository=project_document_repository,
+            authorization_service=authorization_service,
+            vector_store_factory=lambda: _vector_store(settings.QDRANT_COLLECTION_NAME),
+            indexer_factory=lambda loader: DocumentIndexer(
+                loader=loader,
+                chunker=RecursiveTextChunker(
+                    chunk_size=settings.RAG_CHUNK_SIZE,
+                    chunk_overlap=settings.RAG_CHUNK_OVERLAP,
+                ),
+                embedding_provider=recorder.embedder,
+                vector_store=_vector_store(settings.QDRANT_COLLECTION_NAME),
+            ),
+            storage_backend=settings.STORAGE_BACKEND,
+            max_upload_bytes=settings.MAX_UPLOAD_BYTES,
+        )
+
     def override_agent_graph() -> DeterministicAgentGraph:
         return DeterministicAgentGraph(recorder)
 
@@ -287,6 +324,9 @@ def e2e_runtime(monkeypatch, tmp_path: Path) -> Iterator[E2ERuntime]:
     )
     app.dependency_overrides[dependencies.get_question_answering_service] = (
         override_question_service
+    )
+    app.dependency_overrides[dependencies.get_project_document_service] = (
+        override_project_document_service
     )
     app.dependency_overrides[dependencies.get_agent_graph] = override_agent_graph
 
@@ -710,6 +750,263 @@ def test_two_users_are_isolated_through_public_api(e2e_runtime: E2ERuntime) -> N
     assert user_b_session["status"] == "answered"
 
 
+def test_project_library_documents_are_project_scoped(
+    e2e_runtime: E2ERuntime,
+) -> None:
+    alpha_organization = _create_organization(e2e_runtime, slug="phase2-alpha")
+    beta_organization = _create_organization(e2e_runtime, slug="phase2-beta")
+    alpha_project = _create_project(
+        e2e_runtime,
+        alpha_organization["id"],
+        name="Alpha Project",
+    )
+    beta_project = _create_project(
+        e2e_runtime,
+        beta_organization["id"],
+        name="Beta Project",
+    )
+    alpha = _upload_project_library_document(
+        e2e_runtime,
+        project_id=alpha_project["id"],
+        filename="alpha.md",
+        content=b"# Alpha\nalpha project evidence.\n",
+        content_type="text/markdown",
+    )
+    beta = _upload_project_library_document(
+        e2e_runtime,
+        project_id=beta_project["id"],
+        filename="beta.md",
+        content=b"# Beta\nbeta project evidence.\n",
+        content_type="text/markdown",
+    )
+
+    assert alpha["status"] == DocumentStatus.INDEXED.value
+    assert beta["status"] == DocumentStatus.INDEXED.value
+    assert alpha["document_scope"] == DocumentScope.PROJECT_LIBRARY.value
+    assert alpha["session_id"] is None
+    assert "storage_key" not in alpha
+
+    alpha_document = asyncio.run(
+        e2e_runtime.scalar(
+            select(DocumentModel).where(
+                DocumentModel.id == uuid.UUID(alpha["document_id"])
+            )
+        )
+    )
+    alpha_file = _file_metadata(e2e_runtime, alpha["document_id"])
+    assert alpha_document is not None
+    assert alpha_document.organization_id == uuid.UUID(alpha_organization["id"])
+    assert alpha_document.project_id == uuid.UUID(alpha_project["id"])
+    assert alpha_document.document_scope == DocumentScope.PROJECT_LIBRARY.value
+    assert alpha_document.session_id is None
+    assert alpha_file.storage_key.startswith(
+        f"organizations/{alpha_organization['id']}/projects/{alpha_project['id']}/"
+        "library/documents/"
+    )
+    assert e2e_runtime.storage.exists(alpha_file.storage_key) is True
+    qdrant_payloads = _qdrant_payloads_for_document(
+        e2e_runtime,
+        document_id=alpha["document_id"],
+    )
+    assert qdrant_payloads
+    assert {
+        (
+            payload["organization_id"],
+            payload["project_id"],
+            payload["document_scope"],
+        )
+        for payload in qdrant_payloads
+    } == {
+        (
+            alpha_organization["id"],
+            alpha_project["id"],
+            DocumentScope.PROJECT_LIBRARY.value,
+        )
+    }
+
+    alpha_list = e2e_runtime.client.get(
+        f"/api/v1/projects/{alpha_project['id']}/library/documents",
+        headers=e2e_runtime.headers("user-a"),
+    )
+    beta_list = e2e_runtime.client.get(
+        f"/api/v1/projects/{beta_project['id']}/library/documents",
+        headers=e2e_runtime.headers("user-a"),
+    )
+    forbidden_list = e2e_runtime.client.get(
+        f"/api/v1/projects/{alpha_project['id']}/library/documents",
+        headers=e2e_runtime.headers("user-b"),
+    )
+    assert alpha_list.status_code == 200
+    assert [item["document_id"] for item in alpha_list.json()["documents"]] == [
+        alpha["document_id"]
+    ]
+    assert beta_list.status_code == 200
+    assert [item["document_id"] for item in beta_list.json()["documents"]] == [
+        beta["document_id"]
+    ]
+    assert forbidden_list.status_code == 404
+    assert (
+        e2e_runtime.client.get(
+            f"/api/v1/projects/{beta_project['id']}/library/documents/"
+            f"{alpha['document_id']}",
+            headers=e2e_runtime.headers("user-a"),
+        ).status_code
+        == 404
+    )
+    assert (
+        e2e_runtime.client.get(
+            f"/api/v1/projects/{beta_project['id']}/library/documents/"
+            f"{alpha['document_id']}/download",
+            headers=e2e_runtime.headers("user-a"),
+        ).status_code
+        == 404
+    )
+    assert (
+        e2e_runtime.client.delete(
+            f"/api/v1/projects/{beta_project['id']}/library/documents/"
+            f"{alpha['document_id']}",
+            headers=e2e_runtime.headers("user-a"),
+        ).status_code
+        == 404
+    )
+
+    assert _retrieve_project_qdrant(
+        e2e_runtime,
+        "alpha",
+        document_id=alpha["document_id"],
+        organization_id=alpha_organization["id"],
+        project_id=alpha_project["id"],
+        document_scope=DocumentScope.PROJECT_LIBRARY.value,
+    )
+    assert (
+        _retrieve_project_qdrant(
+            e2e_runtime,
+            "alpha",
+            document_id=alpha["document_id"],
+            organization_id=beta_organization["id"],
+            project_id=beta_project["id"],
+            document_scope=DocumentScope.PROJECT_LIBRARY.value,
+        )
+        == []
+    )
+    assert (
+        _retrieve_project_qdrant(
+            e2e_runtime,
+            "alpha",
+            document_id=alpha["document_id"],
+            organization_id=alpha_organization["id"],
+            project_id=alpha_project["id"],
+            document_scope=DocumentScope.CHAT_ATTACHMENT.value,
+        )
+        == []
+    )
+
+
+def test_project_chat_attachments_are_session_scoped(
+    e2e_runtime: E2ERuntime,
+) -> None:
+    organization = _create_organization(e2e_runtime, slug="phase3-chat")
+    project = _create_project(
+        e2e_runtime,
+        organization["id"],
+        name="Chat Project",
+    )
+    library = _upload_project_library_document(
+        e2e_runtime,
+        project_id=project["id"],
+        filename="library.md",
+        content=b"# Library\nalpha project library evidence.\n",
+        content_type="text/markdown",
+    )
+    _assert_indexed(library)
+
+    first_session = _create_project_session(e2e_runtime, project_id=project["id"])
+    second_session = _create_project_session(e2e_runtime, project_id=project["id"])
+    response = _submit_project_message(
+        e2e_runtime,
+        project_id=project["id"],
+        session_id=first_session["id"],
+        message="What alpha and beta evidence is available?",
+        files={
+            "files": (
+                "chat.txt",
+                b"beta chat attachment evidence.\n",
+                "text/plain",
+            )
+        },
+    )
+
+    assert response["session_id"] == first_session["id"]
+    assert response["workflow_id"]
+    assert response["attachments"]
+    attachment = response["attachments"][0]
+    attachment_document = asyncio.run(
+        e2e_runtime.scalar(
+            select(DocumentModel).where(
+                DocumentModel.id == uuid.UUID(attachment["document_id"])
+            )
+        )
+    )
+    attachment_file = _file_metadata(e2e_runtime, attachment["document_id"])
+    assert attachment_document is not None
+    assert attachment_document.organization_id == uuid.UUID(organization["id"])
+    assert attachment_document.project_id == uuid.UUID(project["id"])
+    assert attachment_document.session_id == uuid.UUID(first_session["id"])
+    assert attachment_document.document_scope == DocumentScope.CHAT_ATTACHMENT.value
+    expected_key = (
+        f"organizations/{organization['id']}/projects/{project['id']}/"
+        f"sessions/{first_session['id']}/attachments/{attachment['document_id']}/"
+        "source/content.txt"
+    )
+    assert attachment_file.storage_key == expected_key
+    assert e2e_runtime.storage.exists(expected_key) is True
+
+    payloads = _qdrant_payloads_for_document(
+        e2e_runtime,
+        document_id=attachment["document_id"],
+    )
+    assert payloads
+    assert {
+        (
+            payload["document_id"],
+            payload["organization_id"],
+            payload["project_id"],
+            payload["document_scope"],
+            payload["session_id"],
+        )
+        for payload in payloads
+    } == {
+        (
+            attachment["document_id"],
+            organization["id"],
+            project["id"],
+            DocumentScope.CHAT_ATTACHMENT.value,
+            first_session["id"],
+        )
+    }
+    assert {source["document_id"] for source in response["sources"]} >= {
+        library["document_id"],
+        attachment["document_id"],
+    }
+    assert _retrieve_project_session_qdrant(
+        e2e_runtime,
+        "beta",
+        organization_id=organization["id"],
+        project_id=project["id"],
+        session_id=first_session["id"],
+    )
+    assert (
+        _retrieve_project_session_qdrant(
+            e2e_runtime,
+            "beta",
+            organization_id=organization["id"],
+            project_id=project["id"],
+            session_id=second_session["id"],
+        )
+        == []
+    )
+
+
 def _user_record(runtime: E2ERuntime, subject: str) -> User:
     user = asyncio.run(
         runtime.scalar(select(User).where(User.external_subject == subject))
@@ -744,6 +1041,89 @@ def _upload(
         headers=runtime.headers(subject),
     )
     assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _create_organization(
+    runtime: E2ERuntime,
+    *,
+    slug: str,
+    subject: str = "user-a",
+) -> dict[str, Any]:
+    response = runtime.client.post(
+        "/api/v1/organizations",
+        json={"name": f"{slug.title()} Organization", "slug": slug},
+        headers=runtime.headers(subject),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _create_project(
+    runtime: E2ERuntime,
+    organization_id: str,
+    *,
+    name: str,
+    subject: str = "user-a",
+) -> dict[str, Any]:
+    response = runtime.client.post(
+        f"/api/v1/organizations/{organization_id}/projects",
+        json={"name": name},
+        headers=runtime.headers(subject),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _upload_project_library_document(
+    runtime: E2ERuntime,
+    *,
+    project_id: str,
+    filename: str,
+    content: bytes,
+    content_type: str,
+    subject: str = "user-a",
+) -> dict[str, Any]:
+    response = runtime.client.post(
+        f"/api/v1/projects/{project_id}/library/documents",
+        files={"file": (filename, content, content_type)},
+        headers=runtime.headers(subject),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _create_project_session(
+    runtime: E2ERuntime,
+    *,
+    project_id: str,
+    subject: str = "user-a",
+) -> dict[str, Any]:
+    response = runtime.client.post(
+        f"/api/v1/projects/{project_id}/sessions",
+        json={"title": "E2E chat"},
+        headers=runtime.headers(subject),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _submit_project_message(
+    runtime: E2ERuntime,
+    *,
+    project_id: str,
+    session_id: str,
+    message: str,
+    files: dict[str, tuple[str, bytes, str]] | None = None,
+    subject: str = "user-a",
+) -> dict[str, Any]:
+    response = runtime.client.post(
+        f"/api/v1/projects/{project_id}/sessions/{session_id}/messages",
+        data={"message": message},
+        files=files,
+        headers=runtime.headers(subject),
+    )
+    assert response.status_code == 200, response.text
     return response.json()
 
 
@@ -796,6 +1176,79 @@ def _retrieve_qdrant(
     )
 
 
+def _qdrant_payloads_for_document(
+    runtime: E2ERuntime,
+    *,
+    document_id: str,
+) -> list[dict[str, Any]]:
+    client = QdrantClient(url=runtime.qdrant_url)
+    try:
+        points, _next_page = client.scroll(
+            collection_name=runtime.collection_name,
+            scroll_filter=qdrant_models.Filter(
+                must=[
+                    qdrant_models.FieldCondition(
+                        key="document_id",
+                        match=qdrant_models.MatchValue(value=document_id),
+                    )
+                ]
+            ),
+            limit=10,
+            with_payload=True,
+            with_vectors=False,
+        )
+    finally:
+        client.close()
+    return [dict(point.payload or {}) for point in points]
+
+
+def _retrieve_project_qdrant(
+    runtime: E2ERuntime,
+    query: str,
+    *,
+    document_id: str,
+    organization_id: str,
+    project_id: str,
+    document_scope: str,
+):
+    return Retriever(
+        embedding_provider=KeywordEmbeddingProvider(),
+        vector_store=_vector_store(runtime.collection_name),
+    ).retrieve(
+        query,
+        top_k=5,
+        filters={
+            "document_id": document_id,
+            "organization_id": organization_id,
+            "project_id": project_id,
+            "document_scope": document_scope,
+        },
+    )
+
+
+def _retrieve_project_session_qdrant(
+    runtime: E2ERuntime,
+    query: str,
+    *,
+    organization_id: str,
+    project_id: str,
+    session_id: str,
+):
+    return Retriever(
+        embedding_provider=KeywordEmbeddingProvider(),
+        vector_store=_vector_store(runtime.collection_name),
+    ).retrieve(
+        query,
+        top_k=5,
+        filters={
+            "organization_id": organization_id,
+            "project_id": project_id,
+            "document_scope": DocumentScope.CHAT_ATTACHMENT.value,
+            "session_id": session_id,
+        },
+    )
+
+
 def _dev_token(subject: str) -> str:
     return jwt.encode(
         {
@@ -822,15 +1275,15 @@ def _vector_store(collection_name: str) -> QdrantVectorStore:
 
 def _require_e2e_environment() -> None:
     if not E2E_ENABLED:
-        pytest.skip("Set OPENAGENTLAB_E2E=1 to run isolated E2E tests.")
+        pytest.skip("Set RASTIN_AI_E2E=1 to run isolated E2E tests.")
     if not TEST_DATABASE_URL:
-        pytest.skip("OPENAGENTLAB_TEST_DATABASE_URL is required for E2E tests.")
+        pytest.skip("RASTIN_AI_TEST_DATABASE_URL is required for E2E tests.")
     if not _is_safe_test_database_url(TEST_DATABASE_URL):
         pytest.skip(
-            "OPENAGENTLAB_TEST_DATABASE_URL must point to a database ending in _test.",
+            "RASTIN_AI_TEST_DATABASE_URL must point to a database ending in _test.",
         )
     if not TEST_QDRANT_URL:
-        pytest.skip("OPENAGENTLAB_TEST_QDRANT_URL is required for E2E tests.")
+        pytest.skip("RASTIN_AI_TEST_QDRANT_URL is required for E2E tests.")
 
 
 def _is_safe_test_database_url(database_url: str | None) -> bool:
@@ -859,7 +1312,7 @@ async def _reset_database_async(database_url: str) -> None:
 
 
 def _run_migrations() -> None:
-    from openagentlab.core.config import get_settings
+    from rastin_ai.core.config import get_settings
 
     get_settings.cache_clear()
     config = Config(PROJECT_ROOT / "alembic.ini")
@@ -884,7 +1337,7 @@ async def _dispose_cached_engine() -> None:
 
 
 def _reset_app_modules() -> None:
-    from openagentlab.core.config import get_settings
+    from rastin_ai.core.config import get_settings
 
     get_settings.cache_clear()
     get_engine.cache_clear()

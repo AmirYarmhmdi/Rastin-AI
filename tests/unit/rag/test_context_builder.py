@@ -3,12 +3,12 @@
 - Use: Contains unit tests for context builder behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.context.builder, and
-  openagentlab.rag.models.
+- Depends on: Project modules: rastin_ai.rag.context.builder, and
+  rastin_ai.rag.models.
 """
 
-from openagentlab.rag.context.builder import ContextBuilder
-from openagentlab.rag.models import Chunk, RetrievedChunk
+from rastin_ai.rag.context.builder import ContextBuilder
+from rastin_ai.rag.models import Chunk, RetrievedChunk
 
 
 def retrieved(chunk_id: str, text: str, page_number: int | None) -> RetrievedChunk:

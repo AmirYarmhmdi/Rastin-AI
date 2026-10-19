@@ -12,11 +12,11 @@ from uuid import UUID
 
 import pytest
 
-from openagentlab.repositories.conversations import (
+from rastin_ai.repositories.conversations import (
     ConversationMessageRecord,
     ConversationSessionRecord,
 )
-from openagentlab.services.conversations import (
+from rastin_ai.services.conversations import (
     ConversationHistoryBuilder,
     ConversationHistoryItem,
     ConversationSessionNotFoundError,

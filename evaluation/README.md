@@ -1,6 +1,6 @@
 # Evaluation
 
-OpenAgentLab owns a small, framework-neutral evaluation layer. Canonical datasets
+Rastin-AI owns a small, framework-neutral evaluation layer. Canonical datasets
 live as JSONL records and can feed Ragas, DeepEval, or later evaluator adapters
 without duplicating goldens. The checked-in smoke dataset currently covers RAG
 context-building and agent tool-selection behavior.
@@ -16,7 +16,7 @@ context-building and agent tool-selection behavior.
 
 This folder contains evaluation data and evaluator-facing documentation. The
 Python implementation that validates and runs these cases lives in
-`src/openagentlab/evaluation`, while tests for the evaluation layer live under
+`src/rastin_ai/evaluation`, while tests for the evaluation layer live under
 `tests/unit/evaluation` and `tests/evaluation`.
 
 ## Dataset Format
@@ -56,13 +56,13 @@ credential, or user-supplied content.
 Validate the dataset without external API calls:
 
 ```bash
-uv run python -m openagentlab.evaluation validate --dataset evaluation/datasets/smoke.jsonl
+uv run python -m rastin_ai.evaluation validate --dataset evaluation/datasets/smoke.jsonl
 ```
 
 Validate only tagged smoke cases:
 
 ```bash
-uv run python -m openagentlab.evaluation validate --dataset evaluation/datasets/smoke.jsonl --tags smoke
+uv run python -m rastin_ai.evaluation validate --dataset evaluation/datasets/smoke.jsonl --tags smoke
 ```
 
 Run deterministic evaluation infrastructure tests:
@@ -75,7 +75,7 @@ Run Ragas smoke evaluation after installing evaluation dependencies and setting
 `OPENAI_API_KEY`:
 
 ```bash
-uv run --group evaluation python -m openagentlab.evaluation ragas --dataset evaluation/datasets/smoke.jsonl --tags smoke
+uv run --group evaluation python -m rastin_ai.evaluation ragas --dataset evaluation/datasets/smoke.jsonl --tags smoke
 ```
 
 Run DeepEval regression tests:
@@ -88,11 +88,11 @@ Run the opt-in live runtime DeepEval path:
 
 ```bash
 RUN_LIVE_EVALUATION=1 \
-DATABASE_URL=postgresql+asyncpg://openagentlab:openagentlab_password@localhost:5432/openagentlab \
+DATABASE_URL=postgresql+asyncpg://rastin_ai:rastin_ai_password@localhost:5432/rastin_ai \
 QDRANT_URL=http://localhost:6333 \
-QDRANT_COLLECTION_NAME=openagentlab_live_eval \
+QDRANT_COLLECTION_NAME=rastin_ai_live_eval \
 OPENAI_API_KEY=... \
-uv run --group evaluation python -m openagentlab.evaluation live-deepeval \
+uv run --group evaluation python -m rastin_ai.evaluation live-deepeval \
   --dataset evaluation/datasets/live_smoke.jsonl \
   --tags live smoke \
   --max-cases 1 \
@@ -105,7 +105,7 @@ The live command requires:
 
 - `RUN_LIVE_EVALUATION=1`
 - evaluation dependencies installed with `uv sync --group evaluation`
-- a reachable PostgreSQL database with OpenAgentLab migrations already applied
+- a reachable PostgreSQL database with Rastin-AI migrations already applied
 - a reachable Qdrant instance
 - `OPENAI_API_KEY`
 - a dedicated small `QDRANT_COLLECTION_NAME` for evaluation runs

@@ -1,5 +1,5 @@
 # File guide.
-# Use: Builds the production OpenAgentLab container image.
+# Use: Builds the production Rastin-AI container image.
 # Usage: Docker Compose and Docker can build this file from the repo root.
 # Duties: Installs dependencies, copies source code, and starts Uvicorn.
 # Depends on: pyproject.toml, uv.lock, README.md, LICENSE, alembic, and src.
@@ -33,4 +33,4 @@ USER app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "openagentlab.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "rastin_ai.main:app", "--host", "0.0.0.0", "--port", "8000"]

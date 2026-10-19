@@ -1,6 +1,6 @@
 # Functional Requirements
 
-> This document defines the functional capabilities required by OpenAgentLab.
+> This document defines the functional capabilities required by Rastin-AI.
 >
 > Functional requirements describe what the system must do in order to support user workflows defined in the personas and user stories.
 

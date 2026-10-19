@@ -4,22 +4,22 @@
 # Duties: Runs only disposable Postgres and Qdrant services for E2E tests.
 # Depends on: Docker Compose.
 
-name: openagentlab-e2e
+name: rastin-ai-e2e
 
 services:
   postgres:
     image: docker.io/postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: openagentlab_e2e_test
-      POSTGRES_USER: openagentlab_e2e
-      POSTGRES_PASSWORD: openagentlab_e2e_password
+      POSTGRES_DB: rastin_ai_e2e_test
+      POSTGRES_USER: rastin_ai_e2e
+      POSTGRES_PASSWORD: rastin_ai_e2e_password
     ports:
       - "127.0.0.1:15432:5432"
     volumes:
-      - openagentlab_e2e_postgres_data:/var/lib/postgresql/data
+      - rastin_ai_e2e_postgres_data:/var/lib/postgresql/data
     networks:
-      - openagentlab-e2e-network
+      - rastin-ai-e2e-network
     healthcheck:
       test:
         [
@@ -37,9 +37,9 @@ services:
       - "127.0.0.1:16333:6333"
       - "127.0.0.1:16334:6334"
     volumes:
-      - openagentlab_e2e_qdrant_data:/qdrant/storage
+      - rastin_ai_e2e_qdrant_data:/qdrant/storage
     networks:
-      - openagentlab-e2e-network
+      - rastin-ai-e2e-network
     healthcheck:
       test:
         [
@@ -52,11 +52,11 @@ services:
       start_period: 10s
 
 networks:
-  openagentlab-e2e-network:
-    name: openagentlab_e2e_network
+  rastin-ai-e2e-network:
+    name: rastin_ai_e2e_network
 
 volumes:
-  openagentlab_e2e_postgres_data:
-    name: openagentlab_e2e_postgres_data
-  openagentlab_e2e_qdrant_data:
-    name: openagentlab_e2e_qdrant_data
+  rastin_ai_e2e_postgres_data:
+    name: rastin_ai_e2e_postgres_data
+  rastin_ai_e2e_qdrant_data:
+    name: rastin_ai_e2e_qdrant_data

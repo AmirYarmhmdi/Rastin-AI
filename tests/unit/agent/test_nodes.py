@@ -3,8 +3,8 @@
 - Use: Contains unit tests for initial agent node behavior.
 - Usage: Run this file with pytest when checking agent orchestration nodes.
 - Duties: Builds small states, calls deterministic nodes, and checks results.
-- Depends on: Project modules: openagentlab.agent.nodes and
-  openagentlab.tools.registry.
+- Depends on: Project modules: rastin_ai.agent.nodes and
+  rastin_ai.tools.registry.
 """
 
 from typing import Any
@@ -12,27 +12,27 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from openagentlab.agent.exceptions import ResponseGenerationError
-from openagentlab.agent.execution import (
+from rastin_ai.agent.exceptions import ResponseGenerationError
+from rastin_ai.agent.execution import (
     ExecutionPlanExecutor,
     ExecutionResult,
     TaskStatus,
 )
-from openagentlab.agent.nodes import (
+from rastin_ai.agent.nodes import (
     execute_plan_node,
     planner_node,
     response_generation_node,
     tool_execution_node,
     tool_selection_node,
 )
-from openagentlab.agent.schemas import (
+from rastin_ai.agent.schemas import (
     ExecutionPlan,
     ExecutionTask,
     LiteralArgument,
     TaskOutputReference,
     ToolSelection,
 )
-from openagentlab.tools.registry import register_tool
+from rastin_ai.tools.registry import register_tool
 
 
 class EmptyArguments(BaseModel):

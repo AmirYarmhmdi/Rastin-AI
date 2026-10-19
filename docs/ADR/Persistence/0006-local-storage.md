@@ -8,7 +8,7 @@
 
 # Context
 
-OpenAgentLab allows users to upload source documents including:
+Rastin-AI allows users to upload source documents including:
 
 - PDF
 - Excel
@@ -22,7 +22,7 @@ The MVP prioritizes simplicity, reproducibility, and local development.
 
 # Decision
 
-OpenAgentLab stores uploaded files on the local filesystem during the MVP.
+Rastin-AI stores uploaded files on the local filesystem during the MVP.
 
 Only file metadata is stored in PostgreSQL.
 

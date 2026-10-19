@@ -8,8 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 from helpers import _remove_module, clear_settings_env
 
-from openagentlab.core.config import Settings
-from openagentlab.security.auth import AuthenticationError, validate_bearer_token
+from rastin_ai.core.config import Settings
+from rastin_ai.security.auth import AuthenticationError, validate_bearer_token
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +61,7 @@ def test_dev_jwt_rejects_unsigned_none_algorithm_token() -> None:
     token = jwt.encode(
         {
             "iss": "https://issuer.example.test",
-            "aud": "openagentlab",
+            "aud": "rastin_ai",
             "sub": "user-a",
             "exp": datetime.now(UTC) + timedelta(minutes=5),
         },
@@ -81,19 +81,19 @@ def test_data_endpoint_requires_auth_before_database(monkeypatch) -> None:
     clear_settings_env(monkeypatch)
     monkeypatch.setenv("AUTH_MODE", "dev_jwt")
     monkeypatch.setenv("AUTH_DEV_JWT_ISSUER", "https://issuer.example.test")
-    monkeypatch.setenv("AUTH_DEV_JWT_AUDIENCE", "openagentlab")
+    monkeypatch.setenv("AUTH_DEV_JWT_AUDIENCE", "rastin_ai")
     monkeypatch.setenv("AUTH_DEV_JWT_SECRET", "dev-secret-with-at-least-32-bytes")
 
     for module_name in (
-        "openagentlab.main",
-        "openagentlab.api.dependencies",
-        "openagentlab.api.router",
-        "openagentlab.api.v1.router",
-        "openagentlab.api.v1.endpoints.documents",
+        "rastin_ai.main",
+        "rastin_ai.api.dependencies",
+        "rastin_ai.api.router",
+        "rastin_ai.api.v1.router",
+        "rastin_ai.api.v1.endpoints.documents",
     ):
         _remove_module(module_name)
 
-    app = importlib.import_module("openagentlab.main").create_app()
+    app = importlib.import_module("rastin_ai.main").create_app()
 
     response = TestClient(app).get("/api/v1/documents")
 
@@ -106,7 +106,7 @@ def _dev_jwt_settings() -> Settings:
         _env_file=None,
         AUTH_MODE="dev_jwt",
         AUTH_DEV_JWT_ISSUER="https://issuer.example.test",
-        AUTH_DEV_JWT_AUDIENCE="openagentlab",
+        AUTH_DEV_JWT_AUDIENCE="rastin_ai",
         AUTH_DEV_JWT_SECRET="dev-secret-with-at-least-32-bytes",
     )
 
@@ -114,7 +114,7 @@ def _dev_jwt_settings() -> Settings:
 def _dev_token(*, subject: str, email: str | None = None) -> str:
     payload = {
         "iss": "https://issuer.example.test",
-        "aud": "openagentlab",
+        "aud": "rastin_ai",
         "sub": subject,
         "exp": datetime.now(UTC) + timedelta(minutes=5),
     }

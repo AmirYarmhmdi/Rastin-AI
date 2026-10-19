@@ -4,7 +4,7 @@
 - Usage: Run this file with pytest when checking message API behavior.
 - Duties: Overrides services and verifies multipart request/response shape.
 - Depends on: External packages: fastapi.testclient. Project modules:
-  openagentlab.api.dependencies, services.messages, and helpers.
+  rastin_ai.api.dependencies, services.messages, and helpers.
 """
 
 from uuid import UUID
@@ -12,10 +12,10 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from helpers import create_isolated_app
 
-from openagentlab.core.config import Settings
-from openagentlab.security.auth import AuthenticatedPrincipal
-from openagentlab.services.documents import DocumentRecord, DocumentUpload
-from openagentlab.services.messages import (
+from rastin_ai.core.config import Settings
+from rastin_ai.security.auth import AuthenticatedPrincipal
+from rastin_ai.services.documents import DocumentRecord, DocumentUpload
+from rastin_ai.services.messages import (
     MessageAttachmentInput,
     MessageAttachmentRecord,
     MessageSubmission,
@@ -95,7 +95,7 @@ def test_submit_message_accepts_text_and_files(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
     service = FakeMessageSubmissionService()
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_message_submission_service] = (
         lambda: service
@@ -162,7 +162,7 @@ def test_submit_message_accepts_session_and_document_scope(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
     service = FakeMessageSubmissionService()
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_message_submission_service] = (
         lambda: service
@@ -192,7 +192,7 @@ def test_submit_message_rejects_empty_message(monkeypatch) -> None:
     app = create_isolated_app(monkeypatch)
     service = FakeMessageSubmissionService()
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_message_submission_service] = (
         lambda: service
@@ -211,7 +211,7 @@ def test_submit_message_returns_service_unavailable_when_qdrant_is_not_configure
 ) -> None:
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_settings] = lambda: Settings(
         OPENAI_API_KEY="test-openai-key",

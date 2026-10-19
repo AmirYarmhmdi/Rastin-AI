@@ -1,12 +1,12 @@
 # Project Vision
 
-> **OpenAgentLab** is an open-source AI platform for building intelligent knowledge workspaces where Large Language Models orchestrate tools, structured data, and documents to solve complex analytical tasks.
+> **Rastin-AI** is an open-source AI platform for building intelligent knowledge workspaces where Large Language Models orchestrate tools, structured data, and documents to solve complex analytical tasks.
 
 ---
 
 # North Star
 
-OpenAgentLab is not an AI chatbot. It is an AI orchestration platform where language models coordinate specialized tools to perform reliable, explainable, and production-ready analytical workflows.
+Rastin-AI is not an AI chatbot. It is an AI orchestration platform where language models coordinate specialized tools to perform reliable, explainable, and production-ready analytical workflows.
 
 ---
 

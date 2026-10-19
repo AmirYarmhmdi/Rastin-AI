@@ -1,6 +1,6 @@
 # Web App
 
-This folder contains the React and Vite frontend for OpenAgentLab.
+This folder contains the React and Vite frontend for Rastin-AI.
 
 ## What Is In This Folder
 
@@ -18,7 +18,7 @@ This folder contains the React and Vite frontend for OpenAgentLab.
 
 ## General Role
 
-The web app is a thin client for the OpenAgentLab backend. It gathers user input,
+The web app is a thin client for the Rastin-AI backend. It gathers user input,
 sends messages and attachments to the API, displays workflow status, and renders
 recent run details. The backend remains responsible for persistence, retrieval,
 agent execution, and answer generation.

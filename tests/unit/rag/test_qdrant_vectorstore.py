@@ -3,17 +3,17 @@
 - Use: Contains unit tests for qdrant vectorstore behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.exceptions, openagentlab.rag.models,
-  and openagentlab.rag.vectorstores.qdrant.
+- Depends on: Project modules: rastin_ai.rag.exceptions, rastin_ai.rag.models,
+  and rastin_ai.rag.vectorstores.qdrant.
 """
 
 from types import SimpleNamespace
 
 import pytest
 
-from openagentlab.rag.exceptions import VectorStoreError
-from openagentlab.rag.models import Chunk, RetrievedChunk
-from openagentlab.rag.vectorstores.qdrant import QdrantVectorStore
+from rastin_ai.rag.exceptions import VectorStoreError
+from rastin_ai.rag.models import Chunk, RetrievedChunk
+from rastin_ai.rag.vectorstores.qdrant import QdrantVectorStore
 
 
 class FakeModels:
@@ -157,6 +157,10 @@ def sample_chunk() -> Chunk:
         metadata={
             "source": "/tmp/report.pdf",
             "user_id": "user-1",
+            "organization_id": "org-1",
+            "project_id": "project-1",
+            "document_scope": "PROJECT_LIBRARY",
+            "uploaded_by_user_id": "user-1",
             "filename": "report.pdf",
             "page_number": 1,
             "source_location": "page:1",
@@ -195,6 +199,10 @@ def test_qdrant_store_upsert_builds_payload() -> None:
     assert point.payload["chunk_id"] == "chunk-1"
     assert point.payload["document_id"] == "doc-1"
     assert point.payload["user_id"] == "user-1"
+    assert point.payload["organization_id"] == "org-1"
+    assert point.payload["project_id"] == "project-1"
+    assert point.payload["document_scope"] == "PROJECT_LIBRARY"
+    assert point.payload["uploaded_by_user_id"] == "user-1"
     assert point.payload["text"] == "hello world"
     assert point.payload["metadata"]["page_number"] == 1
     assert point.payload["metadata"]["source_location"] == "page:1"
@@ -227,8 +235,9 @@ def test_qdrant_store_search_maps_results_and_filters() -> None:
         top_k=3,
         filters={
             "project_id": "project-1",
+            "organization_id": "org-1",
+            "document_scope": "PROJECT_LIBRARY",
             "document_id": "doc-1",
-            "user_id": "user-1",
         },
         score_threshold=0.5,
     )
@@ -240,13 +249,18 @@ def test_qdrant_store_search_maps_results_and_filters() -> None:
     assert search_call["limit"] == 3
     assert search_call["score_threshold"] == 0.5
     filter_keys = [condition.key for condition in search_call["query_filter"].must]
-    assert filter_keys == ["metadata.project_id", "document_id", "user_id"]
+    assert filter_keys == [
+        "project_id",
+        "organization_id",
+        "document_scope",
+        "document_id",
+    ]
 
 
 def test_qdrant_store_rejects_document_search_without_user_filter() -> None:
     store = qdrant_store()
 
-    with pytest.raises(VectorStoreError, match="requires user_id"):
+    with pytest.raises(VectorStoreError, match="requires user_id or organization_id"):
         store.search([0.1, 0.2], top_k=3, filters={"document_id": "doc-1"})
 
 
@@ -262,6 +276,32 @@ def test_qdrant_store_delete_by_chunk_ids_and_document_id() -> None:
         condition.key for condition in client.deletes[1]["points_selector"].filter.must
     ]
     assert filter_keys == ["document_id", "user_id"]
+
+
+def test_qdrant_store_delete_supports_project_scoped_document_filter() -> None:
+    client = FakeQdrantClient()
+    store = qdrant_store(client)
+
+    store.delete(
+        document_id="doc-1",
+        filters={
+            "organization_id": "org-1",
+            "project_id": "project-1",
+            "document_scope": "CHAT_ATTACHMENT",
+            "session_id": "session-1",
+        },
+    )
+
+    filter_keys = [
+        condition.key for condition in client.deletes[0]["points_selector"].filter.must
+    ]
+    assert filter_keys == [
+        "organization_id",
+        "project_id",
+        "document_scope",
+        "session_id",
+        "document_id",
+    ]
 
 
 def test_qdrant_store_deletes_collection_when_it_exists() -> None:

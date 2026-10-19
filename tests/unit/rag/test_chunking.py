@@ -3,18 +3,18 @@
 - Use: Contains unit tests for chunking behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.chunking.recursive, and
-  openagentlab.rag.models.
+- Depends on: Project modules: rastin_ai.rag.chunking.recursive, and
+  rastin_ai.rag.models.
 """
 
 import pytest
 from pydantic import ValidationError
 
-from openagentlab.rag.chunking.recursive import (
+from rastin_ai.rag.chunking.recursive import (
     RecursiveChunkerConfig,
     RecursiveTextChunker,
 )
-from openagentlab.rag.models import Document
+from rastin_ai.rag.models import Document
 
 
 def test_recursive_chunker_is_deterministic_and_overlaps() -> None:

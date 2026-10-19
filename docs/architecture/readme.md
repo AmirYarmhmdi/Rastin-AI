@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-This directory contains the architectural documentation for OpenAgentLab.
+This directory contains the architectural documentation for Rastin-AI.
 
 The documents describe the system from business goals to technical implementation.
 

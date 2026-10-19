@@ -3,7 +3,7 @@
 - Use: Tests live evaluation orchestration without external services.
 - Usage: Run with pytest tests/unit/evaluation/test_live.py.
 - Duties: Verifies runtime-generated cases, reporting, and opt-in guard behavior.
-- Depends on: Project modules: openagentlab.evaluation.live.
+- Depends on: Project modules: rastin_ai.evaluation.live.
 """
 
 import asyncio
@@ -12,21 +12,21 @@ from collections.abc import Sequence
 
 import pytest
 
-import openagentlab.agent.response_generator as response_generator_module
-import openagentlab.evaluation.live as live_module
-from openagentlab.evaluation.live import (
+import rastin_ai.agent.response_generator as response_generator_module
+import rastin_ai.evaluation.live as live_module
+from rastin_ai.evaluation.live import (
     LiveEvaluationError,
     LiveEvaluationRunner,
     RuntimeCaseResult,
     _document_fixtures,
     _require_live_evaluation_enabled,
 )
-from openagentlab.evaluation.models import (
+from rastin_ai.evaluation.models import (
     EvaluationCase,
     EvaluationMetricResult,
     EvaluationRunResult,
 )
-from openagentlab.evaluation.thresholds import EvaluationThresholds
+from rastin_ai.evaluation.thresholds import EvaluationThresholds
 
 
 class FakeRuntimeExecutor:
@@ -318,8 +318,8 @@ def test_live_eval_does_not_hard_code_smoke_case_answer() -> None:
     response_source = inspect.getsource(response_generator_module)
     combined_source = f"{live_source}\n{response_source}"
 
-    assert "live-rag-smoke-openagentlab-context" not in combined_source
+    assert "live-rag-smoke-rastin_ai-context" not in combined_source
     assert (
-        "OpenAgentLab uses ContextBuilder to format retrieved chunks into "
+        "Rastin-AI uses ContextBuilder to format retrieved chunks into "
         "source-aware context for response generation."
     ) not in combined_source

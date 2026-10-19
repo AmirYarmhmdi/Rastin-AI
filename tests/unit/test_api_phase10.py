@@ -4,8 +4,8 @@
 - Usage: Run this file with pytest when checking API integration behavior.
 - Duties: Overrides service dependencies and verifies route schemas and errors.
 - Depends on: External packages: fastapi.testclient, pytest. Project modules:
-  openagentlab.api.dependencies, openagentlab.core.exceptions,
-  openagentlab.services, and helpers.
+  rastin_ai.api.dependencies, rastin_ai.core.exceptions,
+  rastin_ai.services, and helpers.
 """
 
 import hashlib
@@ -16,15 +16,15 @@ import pytest
 from fastapi.testclient import TestClient
 from helpers import create_isolated_app
 
-from openagentlab.core.exceptions import AppException
-from openagentlab.services.documents import (
+from rastin_ai.core.exceptions import AppException
+from rastin_ai.services.documents import (
     DocumentNotFoundError,
     DocumentRecord,
     DocumentUpload,
     InvalidDocumentUploadError,
 )
-from openagentlab.services.questions import QuestionAnswer, QuestionInput
-from openagentlab.services.workflows import WorkflowNotFoundError, WorkflowStatusRecord
+from rastin_ai.services.questions import QuestionAnswer, QuestionInput
+from rastin_ai.services.workflows import WorkflowNotFoundError, WorkflowStatusRecord
 
 DOCUMENT_ID = UUID("11111111-1111-4111-8111-111111111111")
 SECOND_DOCUMENT_ID = UUID("22222222-2222-4222-8222-222222222222")
@@ -122,7 +122,7 @@ def api_client(monkeypatch):
     workflow_service = FakeWorkflowStatusService()
     app = create_isolated_app(monkeypatch)
 
-    from openagentlab.api import dependencies
+    from rastin_ai.api import dependencies
 
     app.dependency_overrides[dependencies.get_document_service] = (
         lambda: document_service

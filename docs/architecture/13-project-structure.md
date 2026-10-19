@@ -1,6 +1,6 @@
 # Project Structure
 
-> This document defines the directory structure, architectural boundaries, and development conventions for OpenAgentLab.
+> This document defines the directory structure, architectural boundaries, and development conventions for Rastin-AI.
 
 The project follows a modular architecture inspired by Clean Architecture and Domain-Driven Design (DDD). Each module has a single responsibility and communicates through well-defined interfaces.
 
@@ -21,7 +21,7 @@ The project structure aims to:
 # High-Level Repository Structure
 
 ```text
-OpenAgentLab/
+Rastin-AI/
 
 ├── app/
 ├── tests/

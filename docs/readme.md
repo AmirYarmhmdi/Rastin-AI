@@ -1,6 +1,6 @@
-# OpenAgentLab Documentation
+# Rastin-AI Documentation
 
-Welcome to the OpenAgentLab documentation.
+Welcome to the Rastin-AI documentation.
 
 This directory contains the complete technical documentation for the project, covering its architecture, engineering principles, and architectural decisions.
 
@@ -77,7 +77,7 @@ Examples include:
 
 ## Guiding Principles
 
-OpenAgentLab follows:
+Rastin-AI follows:
 
 - Design First
 - API First

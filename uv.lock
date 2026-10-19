@@ -1861,7 +1861,7 @@ wheels = [
 ]
 
 [[package]]
-name = "openagentlab"
+name = "rastin-ai"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

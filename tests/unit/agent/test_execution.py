@@ -4,8 +4,8 @@
 - Usage: Run this file with pytest when checking agent runtime behavior.
 - Duties: Registers fake capabilities, executes plans, and verifies task states.
 - Depends on: Standard library threading. Project modules:
-  openagentlab.agent.execution, openagentlab.agent.schemas, and
-  openagentlab.tools.registry.
+  rastin_ai.agent.execution, rastin_ai.agent.schemas, and
+  rastin_ai.tools.registry.
 """
 
 import inspect
@@ -14,20 +14,20 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-import openagentlab.agent.execution as execution_module
-from openagentlab.agent.execution import (
+import rastin_ai.agent.execution as execution_module
+from rastin_ai.agent.execution import (
     ExecutionPlanExecutor,
     TaskStatus,
     initialize_task_states,
 )
-from openagentlab.agent.schemas import (
+from rastin_ai.agent.schemas import (
     ExecutionPlan,
     ExecutionTask,
     LiteralArgument,
     TaskOutputReference,
 )
-from openagentlab.skills import CapabilityDefinition
-from openagentlab.tools.registry import register_capability
+from rastin_ai.skills import CapabilityDefinition
+from rastin_ai.tools.registry import register_capability
 
 
 class EmptyArguments(BaseModel):

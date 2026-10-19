@@ -3,9 +3,9 @@
 - Use: Contains unit tests for the OpenAI-backed tool selector adapter.
 - Usage: Run this file with pytest when checking selector SDK integration.
 - Duties: Uses fake OpenAI clients to verify structured-output boundaries.
-- Depends on: Project modules: openagentlab.agent.exceptions,
-  openagentlab.agent.schemas, openagentlab.agent.tool_selector,
-  openagentlab.core.config, and openagentlab.tools.base.
+- Depends on: Project modules: rastin_ai.agent.exceptions,
+  rastin_ai.agent.schemas, rastin_ai.agent.tool_selector,
+  rastin_ai.core.config, and rastin_ai.tools.base.
 """
 
 import inspect
@@ -13,12 +13,12 @@ from types import SimpleNamespace
 
 import pytest
 
-import openagentlab.agent.tool_selector as tool_selector_module
-from openagentlab.agent.exceptions import ToolSelectorError
-from openagentlab.agent.schemas import ToolSelection
-from openagentlab.agent.tool_selector import OpenAIToolSelector
-from openagentlab.core.config import Settings
-from openagentlab.tools.base import ToolDefinition
+import rastin_ai.agent.tool_selector as tool_selector_module
+from rastin_ai.agent.exceptions import ToolSelectorError
+from rastin_ai.agent.schemas import ToolSelection
+from rastin_ai.agent.tool_selector import OpenAIToolSelector
+from rastin_ai.core.config import Settings
+from rastin_ai.tools.base import ToolDefinition
 
 
 class FakeResponsesAPI:
@@ -109,7 +109,7 @@ def test_openai_selector_requires_api_key_without_injected_client() -> None:
         settings=Settings(
             DEBUG=False,
             OPENAI_API_KEY=None,
-            OPENAGENTLAB_TOOL_SELECTOR_MODEL="fake-model",
+            RASTIN_AI_TOOL_SELECTOR_MODEL="fake-model",
         )
     )
 

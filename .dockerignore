@@ -36,8 +36,8 @@ storage/
 qdrant_storage/
 postgres_data/
 langfuse_data/
-openagentlab_*_data/
-openagentlab_*_logs/
+rastin_ai_*_data/
+rastin_ai_*_logs/
 
 tests/
 docs/

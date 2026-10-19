@@ -15,7 +15,7 @@ RAG, storage, agent behavior, evaluation infrastructure, and smoke workflows.
 ## General Role
 
 Tests protect the contracts described in `docs/` and implemented under
-`src/openagentlab`. Unit tests should cover most deterministic behavior;
+`src/rastin_ai`. Unit tests should cover most deterministic behavior;
 integration, evaluation, and e2e tests should be used where confidence depends
 on multiple moving parts.
 
@@ -34,7 +34,7 @@ Some evaluation tests require optional dependencies or credentials such as
 ## Isolated End-To-End Tests
 
 The repeatable E2E harness lives in `tests/e2e/` and is gated by
-`OPENAGENTLAB_E2E=1`. It uses real FastAPI routing, Alembic migrations,
+`RASTIN_AI_E2E=1`. It uses real FastAPI routing, Alembic migrations,
 PostgreSQL repositories, local storage, Qdrant indexing/search, conversation
 persistence, and workflow persistence. It replaces only external
 model-dependent boundaries with deterministic test doubles: embeddings,
@@ -61,13 +61,13 @@ disposable Compose volumes on exit.
 To run manually against already-running disposable services:
 
 ```bash
-export OPENAGENTLAB_E2E=1
-export OPENAGENTLAB_TEST_DATABASE_URL=postgresql+asyncpg://openagentlab_e2e:openagentlab_e2e_password@127.0.0.1:15432/openagentlab_e2e_test
-export OPENAGENTLAB_TEST_QDRANT_URL=http://127.0.0.1:16333
+export RASTIN_AI_E2E=1
+export RASTIN_AI_TEST_DATABASE_URL=postgresql+asyncpg://rastin_ai_e2e:rastin_ai_e2e_password@127.0.0.1:15432/rastin_ai_e2e_test
+export RASTIN_AI_TEST_QDRANT_URL=http://127.0.0.1:16333
 export LANGFUSE_ENABLED=false
 uv run pytest tests/e2e -m e2e -v
 ```
 
-Do not point `OPENAGENTLAB_TEST_DATABASE_URL` at a shared, development, staging,
+Do not point `RASTIN_AI_TEST_DATABASE_URL` at a shared, development, staging,
 or production database. The harness intentionally drops and recreates the
 `public` schema and skips unless the database name ends in `_test`.

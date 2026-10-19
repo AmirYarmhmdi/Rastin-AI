@@ -1,12 +1,12 @@
 # Engineering Guidelines
 
-This directory defines the engineering practices followed by OpenAgentLab.
+This directory defines the engineering practices followed by Rastin-AI.
 
 Unlike the Architecture documents, which describe the system itself, these documents describe how the project is designed, implemented, tested, and maintained.
 
 ## Engineering Principles
 
-OpenAgentLab follows several engineering principles:
+Rastin-AI follows several engineering principles:
 
 - Design First
 - Evaluation First

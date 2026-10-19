@@ -1,6 +1,6 @@
 # Design First Engineering
 
-> OpenAgentLab follows a Design First engineering methodology.
+> Rastin-AI follows a Design First engineering methodology.
 
 ---
 

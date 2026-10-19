@@ -3,12 +3,12 @@
 - Use: Contains unit tests for retriever behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.rag.models, and
-  openagentlab.rag.retrieval.retriever.
+- Depends on: Project modules: rastin_ai.rag.models, and
+  rastin_ai.rag.retrieval.retriever.
 """
 
-from openagentlab.rag.models import Chunk, RetrievedChunk
-from openagentlab.rag.retrieval.retriever import Retriever
+from rastin_ai.rag.models import Chunk, RetrievedChunk
+from rastin_ai.rag.retrieval.retriever import Retriever
 
 
 class FakeEmbeddingProvider:

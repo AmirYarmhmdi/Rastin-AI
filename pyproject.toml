@@ -2,10 +2,10 @@
 # Use: Defines the Python package, dependencies, and tool settings.
 # Usage: uv, build tools, Ruff, Black, and pytest read this file.
 # Duties: Keeps project metadata, dependency groups, and test/lint config.
-# Depends on: README.md, LICENSE, src/openagentlab, and uv.lock.
+# Depends on: README.md, LICENSE, src/rastin_ai, and uv.lock.
 
 [project]
-name = "OpenAgentLab"
+name = "Rastin-AI"
 version = "0.1.0"
 description = "An open-source AI orchestration framework for building agentic applications and workflows."
 readme = "README.md"
@@ -34,6 +34,11 @@ dependencies = [
     "uvicorn",
     "aiohttp>=3.14.3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/AmirYarmhmdi/Rastin-AI"
+Repository = "https://github.com/AmirYarmhmdi/Rastin-AI"
+Issues = "https://github.com/AmirYarmhmdi/Rastin-AI/issues"
 
 
 [build-system]
@@ -77,7 +82,10 @@ select = [
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/openagentlab"]
+packages = ["src/rastin_ai"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/*.backup.json"]
 
 
 [tool.pytest.ini_options]

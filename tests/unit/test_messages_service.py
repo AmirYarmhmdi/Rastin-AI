@@ -13,12 +13,12 @@ from uuid import UUID, uuid4
 
 import pytest
 
-import openagentlab.observability.langfuse as langfuse_observability
-from openagentlab.core.exceptions import AppException
-from openagentlab.database.enums import (
+import rastin_ai.observability.langfuse as langfuse_observability
+from rastin_ai.core.exceptions import AppException
+from rastin_ai.database.enums import (
     ConversationMessageStatus,
 )
-from openagentlab.repositories.conversations import (
+from rastin_ai.repositories.conversations import (
     ConversationDocumentReferenceCreate,
     ConversationDocumentReferenceRecord,
     ConversationMessageCreate,
@@ -26,18 +26,18 @@ from openagentlab.repositories.conversations import (
     ConversationRepository,
     ConversationSessionRecord,
 )
-from openagentlab.services.conversations import (
+from rastin_ai.services.conversations import (
     ConversationHistoryBuilder,
     ConversationHistoryItem,
     ConversationSessionNotFoundError,
 )
-from openagentlab.services.documents import DocumentRecord, DocumentUpload
-from openagentlab.services.messages import (
+from rastin_ai.services.documents import DocumentRecord, DocumentUpload
+from rastin_ai.services.messages import (
     MessageAttachmentInput,
     MessageSubmission,
     MessageSubmissionService,
 )
-from openagentlab.services.questions import QuestionAnswer, QuestionInput
+from rastin_ai.services.questions import QuestionAnswer, QuestionInput
 
 DOCUMENT_ID = UUID("11111111-1111-4111-8111-111111111111")
 FILE_METADATA_ID = UUID("12121212-1212-4121-8121-121212121212")

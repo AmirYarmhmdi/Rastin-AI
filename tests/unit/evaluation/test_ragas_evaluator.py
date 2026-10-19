@@ -3,14 +3,14 @@
 - Use: Tests Ragas adapter behavior without importing or calling Ragas.
 - Usage: Run with pytest tests/unit/evaluation/test_ragas_evaluator.py.
 - Duties: Verifies metric input validation and normalized result generation.
-- Depends on: Project modules: openagentlab.evaluation.ragas_evaluator.
+- Depends on: Project modules: rastin_ai.evaluation.ragas_evaluator.
 """
 
 import pytest
 
-from openagentlab.evaluation.models import EvaluationCase
-from openagentlab.evaluation.ragas_evaluator import RagasEvaluator
-from openagentlab.evaluation.thresholds import EvaluationThresholds
+from rastin_ai.evaluation.models import EvaluationCase
+from rastin_ai.evaluation.ragas_evaluator import RagasEvaluator
+from rastin_ai.evaluation.thresholds import EvaluationThresholds
 
 
 class FakeRagasScore:

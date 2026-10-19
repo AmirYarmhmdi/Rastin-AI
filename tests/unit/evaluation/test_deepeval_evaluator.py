@@ -3,15 +3,15 @@
 - Use: Tests DeepEval adapter behavior without importing or calling DeepEval.
 - Usage: Run with pytest tests/unit/evaluation/test_deepeval_evaluator.py.
 - Duties: Verifies canonical case conversion path and normalized metric results.
-- Depends on: Project modules: openagentlab.evaluation.deepeval_evaluator.
+- Depends on: Project modules: rastin_ai.evaluation.deepeval_evaluator.
 """
 
 import pytest
 
-from openagentlab.evaluation import deepeval_evaluator
-from openagentlab.evaluation.deepeval_evaluator import DeepEvalEvaluator
-from openagentlab.evaluation.models import EvaluationCase
-from openagentlab.evaluation.thresholds import EvaluationThresholds
+from rastin_ai.evaluation import deepeval_evaluator
+from rastin_ai.evaluation.deepeval_evaluator import DeepEvalEvaluator
+from rastin_ai.evaluation.models import EvaluationCase
+from rastin_ai.evaluation.thresholds import EvaluationThresholds
 
 
 class FakeDeepEvalMetric:

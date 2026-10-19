@@ -4,14 +4,14 @@
 - Usage: Run this file with pytest when checking tool registration.
 - Duties: Registers typed fake tools and validates metadata and arguments.
 - Depends on: External packages: pydantic. Project modules:
-  openagentlab.tools.registry.
+  rastin_ai.tools.registry.
 """
 
 import pytest
 from pydantic import BaseModel, ConfigDict
 
-from openagentlab.skills import BaseSkill, BaseTool, CapabilityDefinition, SkillMetadata
-from openagentlab.tools.registry import (
+from rastin_ai.skills import BaseSkill, BaseTool, CapabilityDefinition, SkillMetadata
+from rastin_ai.tools.registry import (
     ToolArgumentValidationError,
     ToolRegistrationError,
     UnknownToolError,
@@ -173,7 +173,7 @@ def test_missing_canonical_capability_fails_cleanly() -> None:
 
 
 def test_skill_registration_drives_metadata_validation_and_runtime_execution() -> None:
-    from openagentlab.tools.registry import get_tool, register_skill
+    from rastin_ai.tools.registry import get_tool, register_skill
 
     skill_tool = SkillOwnedTool()
     register_skill(SkillOwnedCapability(skill_tool))

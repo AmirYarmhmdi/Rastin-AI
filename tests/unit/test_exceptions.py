@@ -3,14 +3,14 @@
 - Use: Contains unit tests for exceptions behavior.
 - Usage: Run this file with pytest when checking related behavior.
 - Duties: Builds test data, calls the public API, and checks expected results.
-- Depends on: Project modules: openagentlab.core.exceptions.
+- Depends on: Project modules: rastin_ai.core.exceptions.
 """
 
 from fastapi import status
 from fastapi.testclient import TestClient
 from helpers import create_isolated_app
 
-from openagentlab.core.exceptions import AppException
+from rastin_ai.core.exceptions import AppException
 
 
 # This checks the response for expected application errors.

@@ -18,7 +18,7 @@ Evaluation should become part of the engineering lifecycle.
 
 # Decision
 
-OpenAgentLab adopts two complementary evaluation frameworks.
+Rastin-AI adopts two complementary evaluation frameworks.
 
 DeepEval evaluates:
 
