@@ -1,7 +1,8 @@
 # Rastin-AI Logo
 
-[`logo.png`](logo.png) is the README logo. Its wordmark was updated with the
-built-in image generation tool while retaining the existing visual identity.
+[`rastin-ai-logo.png`](rastin-ai-logo.png) is the README logo. Its wordmark was
+updated with the built-in image generation tool while retaining the existing
+visual identity.
 
 The edit brief was:
 

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/logo.png" alt="Rastin-AI Logo" width="400">
+  <img src="docs/images/rastin-ai-logo.png" alt="Rastin-AI Logo" width="400">
 </div>
 
 # [Rastin-AI](https://github.com/AmirYarmhmdi/Rastin-AI)
