@@ -93,6 +93,12 @@ function App() {
   );
 
   useEffect(() => {
+    if (activeCreationScreen) {
+      document.getElementById(`${activeCreationScreen}-name`)?.focus();
+    }
+  }, [activeCreationScreen]);
+
+  useEffect(() => {
     if (!isSwitcherOpen && !isNavigationOpen) {
       return;
     }
@@ -322,6 +328,7 @@ function App() {
       return;
     }
     setIsCreatingOrganization(true);
+    setCreationScreen("organization");
     setAppError(null);
     try {
       const organization = await createOrganization({ name });
@@ -346,6 +353,7 @@ function App() {
       return;
     }
     setIsCreatingProject(true);
+    setCreationScreen("project");
     setProjectError(null);
     try {
       const project = await createProject(selectedOrganization.id, {
@@ -649,69 +657,62 @@ function App() {
         </header>
 
         <div className="contentGrid">
-          <section className="chatSurface" aria-label="Selected private chat">
+          <section className={`chatSurface${activeCreationScreen ? " setupSurface" : ""}`} aria-label="Selected private chat">
             <ErrorStack errors={[appError, projectError, chatError]} />
-            {activeCreationScreen === "organization" ? (
-          <form className="compactForm" onSubmit={handleCreateOrganization}>
-            <label htmlFor="organization-name">Organization name</label>
-            <input
-              id="organization-name"
-              value={newOrganizationName}
-              onChange={(event) => setNewOrganizationName(event.target.value)}
-              placeholder="Create organization"
-            />
-            <button
-              className="secondaryButton"
-              disabled={!newOrganizationName.trim() || isCreatingOrganization}
-              type="submit"
-            >
-              {isCreatingOrganization ? "Creating..." : "Create org"}
-            </button>
-          </form>
-            ) : null}
-            {activeCreationScreen === "project" ? (
-          <form className="compactForm" onSubmit={handleCreateProject}>
-            <label htmlFor="project-name">Project name</label>
-            <input
-              id="project-name"
-              value={newProjectName}
-              onChange={(event) => setNewProjectName(event.target.value)}
-              placeholder="Create project"
-              disabled={!selectedOrganization}
-            />
-            <label htmlFor="project-description">Project description</label>
-            <input
-              id="project-description"
-              value={newProjectDescription}
-              onChange={(event) => setNewProjectDescription(event.target.value)}
-              placeholder="Optional"
-              disabled={!selectedOrganization}
-            />
-            <button
-              className="secondaryButton"
-              disabled={!selectedOrganization || !newProjectName.trim() || isCreatingProject}
-              type="submit"
-            >
-              {isCreatingProject ? "Creating..." : "Create project"}
-            </button>
-          </form>
-            ) : null}
-            {creationScreen && selectedProject ? <button className="secondaryButton" type="button" onClick={() => setCreationScreen(null)}>Cancel</button> : null}
-            {!selectedOrganization && !isLoadingOrganizations ? (
-              <EmptyState
-                title="Create an organization"
-                body="Organizations contain the projects, chats, and library files you can access."
-              />
-            ) : null}
-            {selectedOrganization && !selectedProject && !isLoadingProjects ? (
-              <EmptyState
-                title="No project selected"
-                body={
-                  projects.length === 0
-                    ? "This organization has no projects available to your account."
-                    : "Choose a project to open its private chats and library."
-                }
-              />
+            {activeCreationScreen ? (
+              <div className="creationScreen">
+                <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="52" height="58" />
+                <p className="eyebrow">{activeCreationScreen === "organization" ? "Create an organization" : "Create a project"}</p>
+                <h2>{activeCreationScreen === "organization" ? "Name your workspace" : "Name your project"}</h2>
+                <p>{activeCreationScreen === "organization" ? "Your team’s home for projects and shared files." : "Each project has its own files and private chats."}</p>
+                {activeCreationScreen === "organization" ? (
+                  <form className="creationForm" onSubmit={handleCreateOrganization}>
+                    <label className="visuallyHidden" htmlFor="organization-name">Organization name</label>
+                    <input
+                      id="organization-name"
+                      value={newOrganizationName}
+                      onChange={(event) => setNewOrganizationName(event.target.value)}
+                      placeholder="Workspace name"
+                      autoComplete="organization"
+                      disabled={isCreatingOrganization}
+                    />
+                    <button className="primaryButton" aria-label="Create org" disabled={!newOrganizationName.trim() || isCreatingOrganization} type="submit">
+                      {isCreatingOrganization ? "Creating..." : "Continue"}
+                    </button>
+                  </form>
+                ) : (
+                  <form className="creationForm" onSubmit={handleCreateProject}>
+                    <label className="visuallyHidden" htmlFor="project-name">Project name</label>
+                    <input
+                      id="project-name"
+                      value={newProjectName}
+                      onChange={(event) => setNewProjectName(event.target.value)}
+                      placeholder="Project name"
+                      disabled={!selectedOrganization || isCreatingProject}
+                    />
+                    <button className="primaryButton" aria-label="Create project" disabled={!selectedOrganization || !newProjectName.trim() || isCreatingProject} type="submit">
+                      {isCreatingProject ? "Creating..." : "Continue"}
+                    </button>
+                    <details className="creationDetails">
+                      <summary>Add a description (optional)</summary>
+                      <label htmlFor="project-description">Project description</label>
+                      <input
+                        id="project-description"
+                        value={newProjectDescription}
+                        onChange={(event) => setNewProjectDescription(event.target.value)}
+                        placeholder="Optional"
+                        disabled={!selectedOrganization || isCreatingProject}
+                      />
+                    </details>
+                  </form>
+                )}
+                {activeCreationScreen === "project" && projects.length === 0 ? (
+                  <p>This organization has no projects available to your account.</p>
+                ) : null}
+                {creationScreen && selectedProject ? (
+                  <button className="cancelCreation" type="button" disabled={isCreatingOrganization || isCreatingProject} onClick={() => setCreationScreen(null)}>Cancel</button>
+                ) : null}
+              </div>
             ) : null}
             {!activeCreationScreen && selectedProject && !canChat ? (
               <EmptyState
@@ -728,7 +729,7 @@ function App() {
             ) : null}
           </section>
 
-          <ProjectLibrary
+          {!activeCreationScreen ? <ProjectLibrary
             canDelete={canDeleteDocuments}
             canUpload={canUploadDocuments}
             documents={libraryDocuments}
@@ -740,10 +741,10 @@ function App() {
             onRefresh={() => void refreshLibrary()}
             onUpload={handleLibraryUpload}
             projectSelected={Boolean(selectedProject)}
-          />
+          /> : null}
         </div>
 
-        <form className="composer" onSubmit={handleSubmitMessage}>
+        {!activeCreationScreen ? <form className="composer" onSubmit={handleSubmitMessage}>
           <label htmlFor="message">Message</label>
           <textarea
             id="message"
@@ -785,7 +786,7 @@ function App() {
               {isSubmittingMessage ? "Sending..." : "Send"}
             </button>
           </div>
-        </form>
+        </form> : null}
       </section>
     </main>
   );

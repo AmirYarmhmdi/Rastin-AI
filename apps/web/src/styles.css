@@ -789,6 +789,92 @@ button:focus-visible,
   min-height: 0;
 }
 
+.contentGrid:has(.setupSurface) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.setupSurface {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.setupSurface > .errorBanner,
+.creationScreen {
+  width: min(420px, 100%);
+  margin-inline: auto;
+}
+
+.creationScreen {
+  padding-block: 20px 60px;
+}
+
+.creationScreen .brandMark {
+  width: 52px;
+  margin-bottom: 18px;
+}
+
+.creationScreen h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--brand);
+}
+
+.creationScreen p {
+  color: var(--mute);
+  margin: 0 0 18px;
+}
+
+.creationScreen .eyebrow {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.creationForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.creationForm input {
+  border-radius: 12px;
+  padding: 11px 14px;
+}
+
+.creationForm .primaryButton {
+  border-radius: 12px;
+  padding-inline: 18px;
+  font-weight: 600;
+}
+
+.creationDetails {
+  grid-column: 1 / -1;
+  font-size: 14px;
+  margin-block: 4px 12px;
+}
+
+.creationDetails summary {
+  cursor: pointer;
+  color: var(--mute);
+}
+
+.creationDetails label {
+  display: block;
+  margin-block: 10px 4px;
+}
+
+.cancelCreation {
+  background: transparent;
+  color: var(--mute);
+  border: 0;
+  padding: 0;
+  margin-top: 14px;
+  font-size: 14px;
+}
+
 .menuButton,
 .navigationScrim {
   display: none;

@@ -273,6 +273,44 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "New workspace" })).not.toBeInTheDocument();
   });
 
+  it("creates a project with the optional description through the existing API", async () => {
+    const fetchMock = installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "New project" }));
+    expect(screen.getByLabelText("Project name")).toHaveFocus();
+    fireEvent.change(screen.getByLabelText("Project name"), { target: { value: "  Restricted Project  " } });
+    fireEvent.click(screen.getByText("Add a description (optional)"));
+    fireEvent.change(screen.getByLabelText("Project description"), { target: { value: "  Optional context  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+    await screen.findByRole("heading", { name: "Restricted Project" });
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/organizations/${orgId}/projects`, expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ name: "Restricted Project", description: "Optional context" })
+    }));
+    expect(screen.queryByLabelText("Project name")).not.toBeInTheDocument();
+  });
+
+  it("keeps the workspace creation screen and name after a recoverable failure", async () => {
+    const fetchMock = installFetch({ emptyOrganizations: true });
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === "/api/v1/organizations" && init?.method === "POST") {
+        return jsonResponse({ error: { message: "Workspace creation is unavailable." } }, 503);
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    const name = await screen.findByLabelText("Organization name");
+    expect(name).toHaveFocus();
+    fireEvent.change(name, { target: { value: "Keep this workspace name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create org" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Workspace creation is unavailable.");
+    expect(screen.getByLabelText("Organization name")).toHaveValue("Keep this workspace name");
+    expect(screen.getByRole("button", { name: "Create org" })).toBeEnabled();
+  });
+
   it("switches projects and workspaces using the existing stored selections and scoped requests", async () => {
     const otherOrg = { ...organization, id: "other-org", name: "Other workspace" };
     const otherProject = { ...adminProject, id: "other-project", name: "Other project" };
