@@ -445,6 +445,7 @@ function App() {
     <main className="appShell">
       <aside className="sidebar" aria-label="Project navigation">
         <header className="brandBlock">
+          <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="28" height="31" />
           <h1>Rastin-AI</h1>
           <p>Project workspace</p>
         </header>

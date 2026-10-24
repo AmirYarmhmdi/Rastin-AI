@@ -1,11 +1,72 @@
+@font-face {
+  font-family: Figtree;
+  src: url("/assets/figtree-latin-variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+}
+
 :root {
-  color: #18202f;
-  background: #f5f6f8;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  color-scheme: light;
+  --bg: #fff;
+  --side: #f5f6f8;
+  --ink: #17233b;
+  --brand: #0f2d57;
+  --mute: #6b7280;
+  --line: #e7e9ee;
+  --hi: #e9ecf2;
+  --user: #eef1f7;
+  --lion-filter: none;
+  --shadow: 0 6px 28px rgb(15 45 87 / 12%);
+  --danger: #8b2018;
+  --danger-bg: #fff0ee;
+  --danger-line: #f0b4ad;
+  --success: #176234;
+  --success-bg: #ddf3e5;
+  --warning: #765600;
+  --warning-bg: #fff2cf;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: Figtree, system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0b1220;
+    --side: #0e1628;
+    --ink: #e6eaf3;
+    --brand: #a9c1ee;
+    --mute: #8d97ad;
+    --line: #1d2842;
+    --hi: #17213a;
+    --user: #16213a;
+    --lion-filter: brightness(0) invert(0.85);
+    --shadow: 0 6px 28px rgb(0 0 0 / 50%);
+    --danger: #ffb4ab;
+    --danger-bg: #341a22;
+    --danger-line: #754047;
+    --success: #9cdeb5;
+    --success-bg: #153827;
+    --warning: #f5d37c;
+    --warning-bg: #382e17;
+  }
+}
+
+.brandMark {
+  display: block;
+  width: 28px;
+  height: auto;
+  filter: var(--lion-filter);
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 * {
@@ -47,8 +108,8 @@ textarea:disabled {
   flex-direction: column;
   gap: 18px;
   min-height: 100vh;
-  border-right: 1px solid #d8dde7;
-  background: #ffffff;
+  border-right: 1px solid var(--line);
+  background: var(--bg);
   padding: 20px;
 }
 
@@ -74,7 +135,7 @@ textarea:disabled {
 .documentList small,
 .compactList small,
 .messageBubble small {
-  color: #626c7c;
+  color: var(--mute);
 }
 
 .brandBlock p,
@@ -111,9 +172,9 @@ textarea:disabled {
 
 .sectionHeader span {
   border-radius: 999px;
-  background: #edf0f5;
+  background: var(--hi);
   padding: 3px 8px;
-  color: #485266;
+  color: var(--mute);
   font-size: 12px;
   font-weight: 700;
 }
@@ -127,7 +188,7 @@ textarea:disabled {
 .selectField span,
 .compactForm label,
 .composer label {
-  color: #354052;
+  color: var(--ink);
   font-size: 13px;
   font-weight: 750;
 }
@@ -136,10 +197,10 @@ input,
 select,
 textarea {
   width: 100%;
-  border: 1px solid #c9d1df;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
-  color: #18202f;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 input,
@@ -159,7 +220,7 @@ select:focus,
 textarea:focus,
 button:focus-visible,
 .fileButton:focus-within {
-  outline: 3px solid #9ed8db;
+  outline: 3px solid var(--brand);
   outline-offset: 2px;
 }
 
@@ -169,24 +230,24 @@ button:focus-visible,
 .iconButton,
 .documentActions button {
   min-height: 38px;
-  border: 1px solid #c9d1df;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 12px;
   font-weight: 750;
 }
 
 .primaryButton {
-  border-color: #2f6f73;
-  background: #2f6f73;
-  color: #ffffff;
+  border-color: var(--brand);
+  background: var(--brand);
+  color: var(--bg);
 }
 
 .secondaryButton,
 .fileButton,
 .iconButton,
 .documentActions button {
-  background: #ffffff;
-  color: #273142;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .itemList {
@@ -203,9 +264,9 @@ button:focus-visible,
   gap: 5px;
   width: 100%;
   min-height: 64px;
-  border: 1px solid #d7deea;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg);
   padding: 10px;
   color: inherit;
   text-align: left;
@@ -213,8 +274,8 @@ button:focus-visible,
 
 .itemButton:hover,
 .itemButton.selected {
-  border-color: #2f6f73;
-  background: #edf7f6;
+  border-color: var(--brand);
+  background: var(--user);
 }
 
 .itemButton span {
@@ -225,7 +286,7 @@ button:focus-visible,
 }
 
 .itemButton small {
-  color: #626c7c;
+  color: var(--mute);
 }
 
 .workspace {
@@ -237,8 +298,8 @@ button:focus-visible,
 
 .workspaceHeader {
   min-height: 92px;
-  border-bottom: 1px solid #d8dde7;
-  background: #ffffff;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
   padding: 18px 28px;
 }
 
@@ -263,8 +324,8 @@ button:focus-visible,
 .status {
   border-radius: 999px;
   padding: 4px 8px;
-  background: #e9edf3;
-  color: #354052;
+  background: var(--hi);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 750;
 }
@@ -289,8 +350,8 @@ button:focus-visible,
   min-width: 0;
   min-height: 0;
   overflow: auto;
-  border-left: 1px solid #d8dde7;
-  background: #fbfcfd;
+  border-left: 1px solid var(--line);
+  background: var(--side);
   padding: 20px;
 }
 
@@ -314,15 +375,15 @@ button:focus-visible,
   display: grid;
   gap: 8px;
   max-width: 82ch;
-  border: 1px solid #d8dde7;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg);
   padding: 14px;
 }
 
 .messageBubble.user {
   margin-left: auto;
-  background: #edf7f6;
+  background: var(--user);
 }
 
 .messageBubble p {
@@ -333,7 +394,7 @@ button:focus-visible,
 
 .answerDetails,
 .workflowDetails {
-  border-top: 1px solid #d8dde7;
+  border-top: 1px solid var(--line);
   padding-top: 16px;
 }
 
@@ -360,9 +421,9 @@ button:focus-visible,
 
 .compactList li,
 .documentList li {
-  border: 1px solid #d8dde7;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg);
   padding: 10px;
 }
 
@@ -400,39 +461,39 @@ button:focus-visible,
 .workflowDetails li {
   display: grid;
   gap: 4px;
-  border-left: 3px solid #2f6f73;
+  border-left: 3px solid var(--brand);
   padding-left: 12px;
 }
 
 .workflowDetails p {
   margin: 0;
-  color: #354052;
+  color: var(--ink);
 }
 
 .status-completed,
 .status-indexed {
-  background: #ddf3e5;
-  color: #176234;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .status-running,
 .status-pending,
 .status-uploaded,
 .status-processing {
-  background: #fff2cf;
-  color: #765600;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 
 .status-failed {
-  background: #fde4e1;
-  color: #9a2a21;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 
 .composer {
   display: grid;
   gap: 10px;
-  border-top: 1px solid #d8dde7;
-  background: #ffffff;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
   padding: 16px 28px 20px;
 }
 
@@ -471,15 +532,15 @@ button:focus-visible,
 .errorBanner {
   width: fit-content;
   max-width: 100%;
-  border: 1px solid #f0b4ad;
+  border: 1px solid var(--danger-line);
   border-radius: 8px;
-  background: #fff0ee;
+  background: var(--danger-bg);
   padding: 10px 12px;
-  color: #8b2018;
+  color: var(--danger);
 }
 
 .dangerText {
-  color: #8b2018;
+  color: var(--danger);
 }
 
 .emptyState {
@@ -487,11 +548,11 @@ button:focus-visible,
   place-content: center;
   min-height: 360px;
   max-width: 560px;
-  color: #596273;
+  color: var(--mute);
 }
 
 .emptyState h3 {
-  color: #18202f;
+  color: var(--ink);
   font-size: 24px;
 }
 
@@ -504,12 +565,12 @@ button:focus-visible,
   .sidebar {
     min-height: auto;
     border-right: 0;
-    border-bottom: 1px solid #d8dde7;
+    border-bottom: 1px solid var(--line);
   }
 
   .libraryPanel {
     border-left: 0;
-    border-top: 1px solid #d8dde7;
+    border-top: 1px solid var(--line);
   }
 }
 
@@ -536,5 +597,15 @@ button:focus-visible,
 
   .messageBubble.user {
     margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }
