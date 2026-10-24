@@ -152,6 +152,8 @@ describe("App", () => {
     render(<App />);
 
     expect((await screen.findAllByText("Alpha Project")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "New project" }));
     fireEvent.change(screen.getByLabelText("Project name"), {
       target: { value: "Restricted Project" }
     });
@@ -255,6 +257,64 @@ describe("App", () => {
         expect.objectContaining({ method: "DELETE" })
       );
     });
+  });
+
+  it("closes the workspace switcher with Escape and restores focus", async () => {
+    installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    const switcher = screen.getByRole("button", { name: "Switch project or workspace" });
+    fireEvent.click(switcher);
+    expect(switcher).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Alpha Project" })).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(switcher).toHaveAttribute("aria-expanded", "false");
+    expect(switcher).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "New workspace" })).not.toBeInTheDocument();
+  });
+
+  it("switches projects and workspaces using the existing stored selections and scoped requests", async () => {
+    const otherOrg = { ...organization, id: "other-org", name: "Other workspace" };
+    const otherProject = { ...adminProject, id: "other-project", name: "Other project" };
+    const workspaceProject = { ...otherProject, id: "workspace-project", organization_id: otherOrg.id, name: "Workspace project" };
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/v1/organizations" && !init?.method) {
+        return jsonResponse({ organizations: [organization, otherOrg] });
+      }
+      if (path === `/api/v1/organizations/${orgId}/projects` && !init?.method) {
+        return jsonResponse({ projects: [adminProject, otherProject] });
+      }
+      if (path === `/api/v1/organizations/${otherOrg.id}/projects` && !init?.method) {
+        return jsonResponse({ projects: [workspaceProject] });
+      }
+      if ([otherProject.id, workspaceProject.id].some((id) => path === `/api/v1/projects/${id}/sessions`)) {
+        return jsonResponse({ sessions: [] });
+      }
+      if ([otherProject.id, workspaceProject.id].some((id) => path === `/api/v1/projects/${id}/library/documents`)) {
+        return jsonResponse({ documents: [] });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Other project" }));
+    await waitFor(() => {
+      expect(window.localStorage.getItem("rastin_ai.selectedProjectId")).toBe(otherProject.id);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${otherProject.id}/sessions`, undefined);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Other workspace" }));
+    await screen.findByRole("heading", { name: "Workspace project" });
+    await waitFor(() => {
+      expect(window.localStorage.getItem("rastin_ai.selectedOrganizationId")).toBe(otherOrg.id);
+      expect(window.localStorage.getItem("rastin_ai.selectedProjectId")).toBe(workspaceProject.id);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${workspaceProject.id}/library/documents`, undefined);
+    });
+    expectNoLegacyRoutes(fetchMock);
   });
 });
 

@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createOrganization,
@@ -63,6 +63,12 @@ function App() {
   const [projectError, setProjectError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
+  const [creationScreen, setCreationScreen] = useState<"organization" | "project" | null>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  const switcherButtonRef = useRef<HTMLButtonElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const selectedOrganization = useMemo(
     () =>
@@ -78,6 +84,54 @@ function App() {
   const canChat = hasPermission(selectedProject, "chats.create");
   const canUploadDocuments = hasPermission(selectedProject, "documents.upload");
   const canDeleteDocuments = selectedProject?.effective_role === "ADMIN";
+  const activeCreationScreen = creationScreen ?? (
+    !isLoadingOrganizations && !selectedOrganization && !appError
+      ? "organization"
+      : selectedOrganization && !isLoadingProjects && !selectedProject && !projectError
+        ? "project"
+        : null
+  );
+
+  useEffect(() => {
+    if (!isSwitcherOpen && !isNavigationOpen) {
+      return;
+    }
+    if (isSwitcherOpen) {
+      switcherRef.current?.querySelector<HTMLButtonElement>(".switcherPopover button")?.focus();
+    }
+    function handlePointer(event: PointerEvent) {
+      if (!switcherRef.current?.contains(event.target as Node)) {
+        setIsSwitcherOpen(false);
+      }
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (isSwitcherOpen) {
+          setIsSwitcherOpen(false);
+          switcherButtonRef.current?.focus();
+        } else {
+          setIsNavigationOpen(false);
+          menuButtonRef.current?.focus();
+        }
+      }
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [isSwitcherOpen, isNavigationOpen]);
+
+  function closeNavigation() {
+    setIsSwitcherOpen(false);
+    setIsNavigationOpen(false);
+    if (isNavigationOpen) {
+      menuButtonRef.current?.focus();
+    } else {
+      switcherButtonRef.current?.focus();
+    }
+  }
 
   useEffect(() => {
     let isCurrent = true;
@@ -274,6 +328,7 @@ function App() {
       setOrganizations((current) => [...current, organization]);
       setSelectedOrganizationId(organization.id);
       setNewOrganizationName("");
+      setCreationScreen(null);
     } catch (caught) {
       setAppError(errorMessage(caught));
     } finally {
@@ -301,6 +356,7 @@ function App() {
       setSelectedProjectId(project.id);
       setNewProjectName("");
       setNewProjectDescription("");
+      setCreationScreen(null);
     } catch (caught) {
       setProjectError(errorMessage(caught));
     } finally {
@@ -443,28 +499,159 @@ function App() {
 
   return (
     <main className="appShell">
-      <aside className="sidebar" aria-label="Project navigation">
+      <aside id="project-navigation" className={`sidebar${isNavigationOpen ? " navigationOpen" : ""}`} aria-label="Project navigation">
         <header className="brandBlock">
           <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="28" height="31" />
           <h1>Rastin-AI</h1>
-          <p>Project workspace</p>
         </header>
 
-        <section className="stack" aria-label="Organization selector">
+        <section className="stack grow" aria-label="Private chats">
           <div className="sectionHeader">
-            <h2>Organization</h2>
-            {isLoadingOrganizations ? <span>Loading</span> : null}
+            <h2 className="visuallyHidden">Private chats</h2>
+            {isLoadingSessions ? <span>Loading</span> : null}
           </div>
-          <SelectField
-            label="Current organization"
-            value={selectedOrganizationId ?? ""}
-            disabled={isLoadingOrganizations || organizations.length === 0}
-            onChange={(value) => setSelectedOrganizationId(value || null)}
-            options={organizations.map((organization) => ({
-              value: organization.id,
-              label: organization.name
-            }))}
-          />
+          <button
+            className="newChatButton"
+            aria-label="New chat"
+            disabled={!selectedProject || !canChat || isCreatingSession}
+            type="button"
+            onClick={() => {
+              setCreationScreen(null);
+              closeNavigation();
+              void handleCreateSession();
+            }}
+          >
+            {isCreatingSession ? "Creating..." : "New chat"}
+          </button>
+          <div className="itemList" aria-live="polite">
+            {!selectedProject ? <p className="muted">Select a project.</p> : null}
+            {selectedProject && !canChat ? (
+              <p className="muted">Private chats are not available for this role.</p>
+            ) : null}
+            {selectedProject && canChat && !isLoadingSessions && sessions.length === 0 ? (
+              <p className="muted">No private chats yet.</p>
+            ) : null}
+            {sessions.map((session) => (
+              <button
+                className={
+                  session.id === selectedSessionId ? "itemButton selected" : "itemButton"
+                }
+                key={session.id}
+                aria-current={session.id === selectedSessionId ? "page" : undefined}
+                type="button"
+                onClick={() => {
+                  setCreationScreen(null);
+                  closeNavigation();
+                  setSelectedSessionId(session.id);
+                  setLastSubmission(null);
+                }}
+              >
+                <span>{session.title || "Untitled chat"}</span>
+                <small>{session.status} · {formatDate(session.updated_at)}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+        <div className="workspaceSwitcher" ref={switcherRef} onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setIsSwitcherOpen(false);
+          }
+        }}>
+          <button
+            className="switcherButton"
+            type="button"
+            ref={switcherButtonRef}
+            aria-label="Switch project or workspace"
+            aria-expanded={isSwitcherOpen}
+            aria-controls="workspace-switcher"
+            onClick={() => setIsSwitcherOpen((current) => !current)}
+          >
+            <span>
+              <strong>{selectedProject?.name || "No project"}</strong>
+              <small>{selectedOrganization?.name || "No workspace"}</small>
+            </span>
+            <span aria-hidden="true">⌃</span>
+          </button>
+          {isSwitcherOpen ? (
+            <div id="workspace-switcher" className="switcherPopover">
+              <section aria-label="Project selector">
+                <h2>Projects{selectedOrganization ? ` in ${selectedOrganization.name}` : ""}</h2>
+                {isLoadingProjects ? <p className="muted" role="status">Loading projects...</p> : null}
+                <div role="group" aria-label="Current project">
+                  {projects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      aria-current={project.id === selectedProjectId ? "true" : undefined}
+                      onClick={() => {
+                        setSelectedProjectId(project.id);
+                        setCreationScreen(null);
+                        closeNavigation();
+                      }}
+                    >
+                      {project.name}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" disabled={!selectedOrganization} onClick={() => {
+                  setCreationScreen("project");
+                  closeNavigation();
+                }}>New project</button>
+              </section>
+              <section aria-label="Organization selector">
+                <h2>Workspaces</h2>
+                {isLoadingOrganizations ? <p className="muted" role="status">Loading workspaces...</p> : null}
+                <div role="group" aria-label="Current organization">
+                  {organizations.map((organization) => (
+                    <button
+                      key={organization.id}
+                      type="button"
+                      aria-current={organization.id === selectedOrganizationId ? "true" : undefined}
+                      onClick={() => {
+                        setSelectedOrganizationId(organization.id);
+                        setCreationScreen(null);
+                        closeNavigation();
+                      }}
+                    >
+                      {organization.name}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => {
+                  setCreationScreen("organization");
+                  closeNavigation();
+                }}>New workspace</button>
+              </section>
+            </div>
+          ) : null}
+        </div>
+      </aside>
+      {isNavigationOpen ? <button className="navigationScrim" type="button" aria-label="Close navigation" onClick={() => {
+        closeNavigation();
+        menuButtonRef.current?.focus();
+      }} /> : null}
+
+      <section className="workspace" aria-label="Project workspace">
+        <header className="workspaceHeader">
+          <button className="menuButton" type="button" ref={menuButtonRef} aria-label="Menu" aria-expanded={isNavigationOpen} aria-controls="project-navigation" onClick={() => setIsNavigationOpen((current) => !current)}>☰</button>
+          <div>
+            <p className="eyebrow">{selectedOrganization?.name || "No organization"}</p>
+            <h2>{selectedProject?.name || "Select a project"}</h2>
+            {selectedProject?.description ? <p>{selectedProject.description}</p> : null}
+          </div>
+          {selectedProject ? (
+            <div className="permissionLine" aria-label="Project permissions">
+              {selectedProject.permissions.map((permission) => (
+                <span key={permission}>{permission}</span>
+              ))}
+            </div>
+          ) : null}
+        </header>
+
+        <div className="contentGrid">
+          <section className="chatSurface" aria-label="Selected private chat">
+            <ErrorStack errors={[appError, projectError, chatError]} />
+            {activeCreationScreen === "organization" ? (
           <form className="compactForm" onSubmit={handleCreateOrganization}>
             <label htmlFor="organization-name">Organization name</label>
             <input
@@ -481,23 +668,8 @@ function App() {
               {isCreatingOrganization ? "Creating..." : "Create org"}
             </button>
           </form>
-        </section>
-
-        <section className="stack" aria-label="Project selector">
-          <div className="sectionHeader">
-            <h2>Project</h2>
-            {selectedProject ? <span>{selectedProject.effective_role}</span> : null}
-          </div>
-          <SelectField
-            label="Current project"
-            value={selectedProjectId ?? ""}
-            disabled={!selectedOrganization || isLoadingProjects || projects.length === 0}
-            onChange={(value) => setSelectedProjectId(value || null)}
-            options={projects.map((project) => ({
-              value: project.id,
-              label: project.name
-            }))}
-          />
+            ) : null}
+            {activeCreationScreen === "project" ? (
           <form className="compactForm" onSubmit={handleCreateProject}>
             <label htmlFor="project-name">Project name</label>
             <input
@@ -523,68 +695,8 @@ function App() {
               {isCreatingProject ? "Creating..." : "Create project"}
             </button>
           </form>
-        </section>
-
-        <section className="stack grow" aria-label="Private chats">
-          <div className="sectionHeader">
-            <h2>Private chats</h2>
-            {isLoadingSessions ? <span>Loading</span> : null}
-          </div>
-          <button
-            className="primaryButton"
-            disabled={!selectedProject || !canChat || isCreatingSession}
-            type="button"
-            onClick={() => void handleCreateSession()}
-          >
-            {isCreatingSession ? "Creating..." : "New chat"}
-          </button>
-          <div className="itemList" aria-live="polite">
-            {!selectedProject ? <p className="muted">Select a project.</p> : null}
-            {selectedProject && !canChat ? (
-              <p className="muted">Private chats are not available for this role.</p>
             ) : null}
-            {selectedProject && canChat && !isLoadingSessions && sessions.length === 0 ? (
-              <p className="muted">No private chats yet.</p>
-            ) : null}
-            {sessions.map((session) => (
-              <button
-                className={
-                  session.id === selectedSessionId ? "itemButton selected" : "itemButton"
-                }
-                key={session.id}
-                type="button"
-                onClick={() => {
-                  setSelectedSessionId(session.id);
-                  setLastSubmission(null);
-                }}
-              >
-                <span>{session.title || "Untitled chat"}</span>
-                <small>{session.status} · {formatDate(session.updated_at)}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-      </aside>
-
-      <section className="workspace" aria-label="Project workspace">
-        <header className="workspaceHeader">
-          <div>
-            <p className="eyebrow">{selectedOrganization?.name || "No organization"}</p>
-            <h2>{selectedProject?.name || "Select a project"}</h2>
-            {selectedProject?.description ? <p>{selectedProject.description}</p> : null}
-          </div>
-          {selectedProject ? (
-            <div className="permissionLine" aria-label="Project permissions">
-              {selectedProject.permissions.map((permission) => (
-                <span key={permission}>{permission}</span>
-              ))}
-            </div>
-          ) : null}
-        </header>
-
-        <div className="contentGrid">
-          <section className="chatSurface" aria-label="Selected private chat">
-            <ErrorStack errors={[appError, projectError, chatError]} />
+            {creationScreen && selectedProject ? <button className="secondaryButton" type="button" onClick={() => setCreationScreen(null)}>Cancel</button> : null}
             {!selectedOrganization && !isLoadingOrganizations ? (
               <EmptyState
                 title="Create an organization"
@@ -601,13 +713,13 @@ function App() {
                 }
               />
             ) : null}
-            {selectedProject && !canChat ? (
+            {!activeCreationScreen && selectedProject && !canChat ? (
               <EmptyState
                 title="Project library access"
                 body="Your current project role can read project files, but cannot create or continue private chats."
               />
             ) : null}
-            {selectedProject && canChat ? (
+            {!activeCreationScreen && selectedProject && canChat ? (
               <ChatThread
                 isLoading={isLoadingSession}
                 session={sessionDetail}
