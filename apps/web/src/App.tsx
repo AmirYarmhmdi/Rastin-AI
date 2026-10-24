@@ -126,6 +126,12 @@ function App() {
   }
 
   useEffect(() => {
+    if (isNavigationOpen) {
+      document.getElementById("project-navigation")?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    }
+  }, [isNavigationOpen]);
+
+  useEffect(() => {
     if (!isSwitcherOpen && !isNavigationOpen) {
       return;
     }
@@ -540,7 +546,7 @@ function App() {
           <h1>Rastin-AI</h1>
         </header>
 
-        <section className="stack grow" aria-label="Private chats">
+        <section className="privateChats" aria-label="Private chats">
           <div className="sectionHeader">
             <h2 className="visuallyHidden">Private chats</h2>
             {isLoadingSessions ? <span>Loading</span> : null}
@@ -846,38 +852,6 @@ function App() {
         </dialog>
       ) : null}
     </main>
-  );
-}
-
-function SelectField({
-  disabled,
-  label,
-  onChange,
-  options,
-  value
-}: {
-  disabled: boolean;
-  label: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  value: string;
-}) {
-  return (
-    <label className="selectField">
-      <span>{label}</span>
-      <select
-        disabled={disabled}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">None</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 

@@ -226,7 +226,7 @@ describe("App", () => {
       screen.getByText("Private chats are not available for this role.")
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New chat" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Files · 1" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
     expect(screen.getByText("Upload is not available for this project role.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
     expect(screen.getAllByText("roadmap.md").length).toBeGreaterThan(0);
@@ -243,7 +243,7 @@ describe("App", () => {
     render(<App />);
 
     expect((await screen.findAllByText("Alpha Project")).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Files · 1" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
     fireEvent.change(screen.getByLabelText("Upload file"), {
       target: {
         files: [new File(["new"], "brief.md", { type: "text/markdown" })]
@@ -273,6 +273,18 @@ describe("App", () => {
     expect(switcher).toHaveAttribute("aria-expanded", "false");
     expect(switcher).toHaveFocus();
     expect(screen.queryByRole("button", { name: "New workspace" })).not.toBeInTheDocument();
+  });
+
+  it.each([false, true])("moves focus into mobile navigation and restores it on Escape (viewer=%s)", async (viewer) => {
+    installFetch({ viewer });
+    render(<App />);
+    await screen.findByRole("button", { name: "Files · 1" });
+    const menu = screen.getByRole("button", { name: "Menu" });
+    fireEvent.click(menu);
+    expect(screen.getByRole("button", { name: viewer ? "Switch project or workspace" : "New chat" })).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(menu).toHaveFocus();
+    expect(menu).toHaveAttribute("aria-expanded", "false");
   });
 
   it("opens project files and returns focus to Files when Escape closes the drawer", async () => {
