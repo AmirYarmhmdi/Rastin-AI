@@ -226,6 +226,7 @@ describe("App", () => {
       screen.getByText("Private chats are not available for this role.")
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New chat" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Files · 1" }));
     expect(screen.getByText("Upload is not available for this project role.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
     expect(screen.getAllByText("roadmap.md").length).toBeGreaterThan(0);
@@ -242,6 +243,7 @@ describe("App", () => {
     render(<App />);
 
     expect((await screen.findAllByText("Alpha Project")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Files · 1" }));
     fireEvent.change(screen.getByLabelText("Upload file"), {
       target: {
         files: [new File(["new"], "brief.md", { type: "text/markdown" })]
@@ -271,6 +273,64 @@ describe("App", () => {
     expect(switcher).toHaveAttribute("aria-expanded", "false");
     expect(switcher).toHaveFocus();
     expect(screen.queryByRole("button", { name: "New workspace" })).not.toBeInTheDocument();
+  });
+
+  it("opens project files and returns focus to Files when Escape closes the drawer", async () => {
+    installFetch();
+    render(<App />);
+    const files = await screen.findByRole("button", { name: "Files · 1" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(files);
+    const drawer = screen.getByRole("dialog", { name: "Project Library" });
+    expect(drawer).toHaveAttribute("open");
+    expect(screen.getByRole("button", { name: "Close project files" })).toHaveFocus();
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(files).toHaveFocus();
+    expect(files).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("allows members to chat and upload while keeping deletion disabled", async () => {
+    const fetchMock = installFetch({ member: true });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+    expect(screen.getByRole("button", { name: "New chat" })).toBeEnabled();
+    expect(screen.getByLabelText("Upload file")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Upload file"), {
+      target: { files: [new File(["new"], "brief.md", { type: "text/markdown" })] }
+    });
+    await screen.findByText("brief.md");
+    expect(screen.getByRole("button", { name: "Files · 2" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Delete" }).every((button) => button.hasAttribute("disabled"))).toBe(true);
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("refreshes and downloads project files through scoped library endpoints", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/library/documents/${documentId}/download`) {
+        return new Response("downloaded file", { headers: { "Content-Type": "text/markdown" } });
+      }
+      return originalFetch(input, init);
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      render(<App />);
+      fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+      fireEvent.click(screen.getByRole("button", { name: "Refresh project files" }));
+      await waitFor(() => expect(fetchMock.mock.calls.filter(([input]) => String(input) === `/api/v1/projects/${projectId}/library/documents`)).toHaveLength(2));
+      fireEvent.click(screen.getByRole("button", { name: "Download" }));
+      await waitFor(() => expect(click).toHaveBeenCalledOnce());
+      expect(click.mock.instances[0]).toHaveAttribute("download", "roadmap.md");
+      expect(URL.createObjectURL).toHaveBeenCalledOnce();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:download");
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${projectId}/library/documents/${documentId}/download`, undefined);
+      expectNoLegacyRoutes(fetchMock);
+    } finally {
+      click.mockRestore();
+    }
   });
 
   it("creates a project with the optional description through the existing API", async () => {
@@ -412,11 +472,13 @@ describe("App", () => {
 
 function installFetch({
   emptyOrganizations = false,
+  member = false,
   messageFailure = false,
   projectCreateForbidden = false,
   viewer = false
 }: {
   emptyOrganizations?: boolean;
+  member?: boolean;
   messageFailure?: boolean;
   projectCreateForbidden?: boolean;
   viewer?: boolean;
@@ -437,7 +499,11 @@ function installFetch({
 
     if (path.endsWith("/projects") && method === "GET") {
       return jsonResponse({
-        projects: emptyOrganizations ? [] : [viewer ? viewerProject : adminProject]
+        projects: emptyOrganizations ? [] : [viewer ? viewerProject : member ? {
+          ...adminProject,
+          effective_role: "MEMBER",
+          permissions: ["projects.read", "documents.upload", "chats.create"]
+        } : adminProject]
       });
     }
 

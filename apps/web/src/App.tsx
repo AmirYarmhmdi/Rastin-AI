@@ -70,6 +70,9 @@ function App() {
   const switcherButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const messageRef = useRef<HTMLTextAreaElement>(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const libraryRef = useRef<HTMLDialogElement>(null);
+  const filesButtonRef = useRef<HTMLButtonElement>(null);
 
   const selectedOrganization = useMemo(
     () =>
@@ -106,6 +109,21 @@ function App() {
       textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
     }
   }, [message, activeCreationScreen, canChat]);
+
+  useEffect(() => {
+    const dialog = libraryRef.current;
+    if (isLibraryOpen && dialog) {
+      dialog.showModal();
+      dialog.querySelector<HTMLButtonElement>('[aria-label="Close project files"]')?.focus();
+      return () => dialog.close();
+    }
+  }, [isLibraryOpen]);
+
+  function closeLibrary() {
+    libraryRef.current?.close();
+    setIsLibraryOpen(false);
+    filesButtonRef.current?.focus();
+  }
 
   useEffect(() => {
     if (!isSwitcherOpen && !isNavigationOpen) {
@@ -665,6 +683,11 @@ function App() {
               </div>
             </details>
           ) : null}
+          {selectedProject ? (
+            <button className="filesButton" type="button" ref={filesButtonRef} aria-expanded={isLibraryOpen} aria-controls="project-files-drawer" aria-haspopup="dialog" onClick={() => setIsLibraryOpen(true)}>
+              Files · {libraryDocuments.length}
+            </button>
+          ) : null}
         </header>
 
         <div className="contentGrid">
@@ -740,19 +763,6 @@ function App() {
             ) : null}
           </section>
 
-          {!activeCreationScreen ? <ProjectLibrary
-            canDelete={canDeleteDocuments}
-            canUpload={canUploadDocuments}
-            documents={libraryDocuments}
-            error={libraryError}
-            isLoading={isLoadingLibrary}
-            isUploading={isUploadingLibrary}
-            onDelete={(document) => void handleDeleteDocument(document)}
-            onDownload={(document) => void handleDownloadDocument(document)}
-            onRefresh={() => void refreshLibrary()}
-            onUpload={handleLibraryUpload}
-            projectSelected={Boolean(selectedProject)}
-          /> : null}
         </div>
 
         {!activeCreationScreen ? <div className="composerDock">
@@ -800,6 +810,34 @@ function App() {
           </form>
         </div> : null}
       </section>
+      {isLibraryOpen && selectedProject ? (
+        <dialog id="project-files-drawer" className="filesDrawer" aria-label="Project Library" ref={libraryRef}
+          onCancel={(event) => { event.preventDefault(); closeLibrary(); }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              closeLibrary();
+            }
+          }}
+          onClick={(event) => { if (event.target === event.currentTarget) closeLibrary(); }}
+        >
+          <ProjectLibrary
+            canDelete={canDeleteDocuments}
+            canUpload={canUploadDocuments}
+            documents={libraryDocuments}
+            error={libraryError}
+            isLoading={isLoadingLibrary}
+            isUploading={isUploadingLibrary}
+            onClose={closeLibrary}
+            onDelete={(document) => void handleDeleteDocument(document)}
+            onDownload={(document) => void handleDownloadDocument(document)}
+            onRefresh={() => void refreshLibrary()}
+            onUpload={handleLibraryUpload}
+            projectSelected={Boolean(selectedProject)}
+          />
+        </dialog>
+      ) : null}
     </main>
   );
 }
@@ -1001,6 +1039,7 @@ function ProjectLibrary({
   error,
   isLoading,
   isUploading,
+  onClose,
   onDelete,
   onDownload,
   onRefresh,
@@ -1013,6 +1052,7 @@ function ProjectLibrary({
   error: string | null;
   isLoading: boolean;
   isUploading: boolean;
+  onClose: () => void;
   onDelete: (document: ProjectDocument) => void;
   onDownload: (document: ProjectDocument) => void;
   onRefresh: () => void;
@@ -1023,8 +1063,7 @@ function ProjectLibrary({
     <aside className="libraryPanel" aria-label="Project files">
       <header className="panelHeader">
         <div>
-          <p className="eyebrow">Project files</p>
-          <h3>Library</h3>
+          <h3>Project files</h3>
         </div>
         <button
           className="iconButton"
@@ -1036,6 +1075,7 @@ function ProjectLibrary({
         >
           Refresh
         </button>
+        <button className="closeFilesButton" type="button" aria-label="Close project files" onClick={onClose}>×</button>
       </header>
       {error ? (
         <div className="errorBanner" role="alert">
@@ -1045,6 +1085,7 @@ function ProjectLibrary({
       <label className="fileButton fullWidth">
         {isUploading ? "Uploading..." : "Upload file"}
         <input
+          aria-label="Upload file"
           multiple
           type="file"
           disabled={!projectSelected || !canUpload || isUploading}
