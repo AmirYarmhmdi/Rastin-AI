@@ -100,8 +100,11 @@ class FakeRetriever:
 
 
 class ProjectScopeRetriever:
-    def __init__(self) -> None:
+    def __init__(
+        self, library_text: str = "Project library says launch code is apollo."
+    ) -> None:
         self.calls = []
+        self.library_text = library_text
 
     def retrieve(self, query: str, *, top_k: int = 5, filters=None, **kwargs):
         _ = query
@@ -116,7 +119,7 @@ class ProjectScopeRetriever:
             return [
                 _retrieved_chunk(
                     document_id=str(DOCUMENT_ID),
-                    text="Project library says launch code is apollo.",
+                    text=self.library_text,
                     filename="library.txt",
                     metadata={"document_scope": "PROJECT_LIBRARY"},
                 )
@@ -298,6 +301,36 @@ def test_citations_do_not_leak_storage_keys_or_paths() -> None:
 
 def test_project_retrieval_uses_current_session_attachment_filters() -> None:
     asyncio.run(_run_project_retrieval_scope_test())
+
+
+@pytest.mark.parametrize(
+    ("question", "evidence"),
+    [
+        (
+            "how many languges he can speak?",
+            "LINGUE\nInglese: fluente\nItaliano: A2, in continuo miglioramento",
+        ),
+        (
+            "How many languages does he speak?",
+            "LINGUE\nInglese: fluente\nItaliano: A2, in continuo miglioramento",
+        ),
+        (
+            "Which tongues can the candidate use?",
+            "Fluent English; conversational Italian.",
+        ),
+    ],
+)
+def test_new_project_chat_generates_from_semantic_evidence_without_word_overlap(
+    question: str, evidence: str
+) -> None:
+    asyncio.run(_run_project_semantic_evidence_test(question, evidence))
+
+
+@pytest.mark.parametrize("context_max_chars", [None, 1])
+def test_project_chat_without_usable_evidence_skips_generation(
+    context_max_chars: int | None,
+) -> None:
+    asyncio.run(_run_project_no_evidence_test(context_max_chars))
 
 
 def test_direct_rag_persists_observability_trace_id(monkeypatch) -> None:
@@ -821,6 +854,76 @@ async def _run_project_retrieval_scope_test() -> None:
     } in retriever.calls
     assert workflow_repository.created[0].organization_id == ORGANIZATION_ID
     assert workflow_repository.created[0].project_id == PROJECT_ID
+
+
+async def _run_project_semantic_evidence_test(question: str, evidence: str) -> None:
+    generator = FakeResponseGenerator()
+    retriever = ProjectScopeRetriever(library_text=evidence)
+    service = _persisted_service(retriever, generator)
+
+    answer = await service.answer(
+        QuestionInput(
+            question=question,
+            document_ids=[],
+            session_id=SECOND_SESSION_ID,
+            project_retrieval_scope=ProjectRetrievalScope(
+                organization_id=ORGANIZATION_ID,
+                project_id=PROJECT_ID,
+                session_id=SECOND_SESSION_ID,
+            ),
+        )
+    )
+
+    assert answer.status == "answered"
+    assert generator.call_count == 1
+    assert evidence in generator.tool_result["text"]
+    assert {source["document_id"] for source in answer.sources} == {str(DOCUMENT_ID)}
+    assert {citation["document_id"] for citation in answer.citations} == {
+        str(DOCUMENT_ID)
+    }
+    assert retriever.calls == [
+        {
+            "organization_id": str(ORGANIZATION_ID),
+            "project_id": str(PROJECT_ID),
+            "document_scope": "PROJECT_LIBRARY",
+        },
+        {
+            "organization_id": str(ORGANIZATION_ID),
+            "project_id": str(PROJECT_ID),
+            "document_scope": "CHAT_ATTACHMENT",
+            "session_id": str(SECOND_SESSION_ID),
+        },
+    ]
+
+
+async def _run_project_no_evidence_test(context_max_chars: int | None) -> None:
+    generator = FakeResponseGenerator()
+    retriever = (
+        FakeRetriever({}) if context_max_chars is None else ProjectScopeRetriever()
+    )
+    service = _persisted_service(
+        retriever,
+        generator,
+        context_builder=ContextBuilder(max_chars=context_max_chars),
+    )
+
+    answer = await service.answer(
+        QuestionInput(
+            question="How many languages does he speak?",
+            document_ids=[],
+            session_id=SECOND_SESSION_ID,
+            project_retrieval_scope=ProjectRetrievalScope(
+                organization_id=ORGANIZATION_ID,
+                project_id=PROJECT_ID,
+                session_id=SECOND_SESSION_ID,
+            ),
+        )
+    )
+
+    assert answer.status == QUESTION_STATUS_NO_EVIDENCE
+    assert answer.citations == ()
+    assert answer.sources == ()
+    assert generator.call_count == 0
 
 
 def _persisted_service(
