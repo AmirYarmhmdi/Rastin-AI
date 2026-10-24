@@ -542,7 +542,7 @@ function App() {
     <main className="appShell">
       <aside id="project-navigation" className={`sidebar${isNavigationOpen ? " navigationOpen" : ""}`} aria-label="Project navigation">
         <header className="brandBlock">
-          <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="28" height="31" />
+          <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="28" height="30" />
           <h1>Rastin-AI</h1>
         </header>
 
@@ -707,8 +707,8 @@ function App() {
             {isLoadingProjects ? <p className="muted" role="status">Loading projects...</p> : null}
             {activeCreationScreen ? (
               <div className="creationScreen">
-                <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="52" height="58" />
-                <p className="eyebrow">{activeCreationScreen === "organization" ? "Create an organization" : "Create a project"}</p>
+                <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="52" height="56" />
+                <p className="eyebrow visuallyHidden">{activeCreationScreen === "organization" ? "Create an organization" : "Create a project"}</p>
                 <h2>{activeCreationScreen === "organization" ? "Name your workspace" : "Name your project"}</h2>
                 <p>{activeCreationScreen === "organization" ? "Your team’s home for projects and shared files." : "Each project has its own files and private chats."}</p>
                 {activeCreationScreen === "organization" ? (
@@ -1066,16 +1066,6 @@ function ProjectLibrary({
           <p className="errorHint">Refresh project files to check the latest state before trying again.</p>
         </div>
       ) : null}
-      <label className="fileButton fullWidth">
-        {isUploading ? "Uploading..." : "Upload file"}
-        <input
-          aria-label="Upload file"
-          multiple
-          type="file"
-          disabled={!projectSelected || !canUpload || isUploading}
-          onChange={onUpload}
-        />
-      </label>
       {!canUpload && projectSelected ? (
         <p className="muted">Upload is not available for this project role.</p>
       ) : null}
@@ -1114,6 +1104,16 @@ function ProjectLibrary({
           </li>
         ))}
       </ul>
+      <label className="fileButton fullWidth">
+        {isUploading ? "Uploading..." : "Upload file"}
+        <input
+          aria-label="Upload file"
+          multiple
+          type="file"
+          disabled={!projectSelected || !canUpload || isUploading}
+          onChange={onUpload}
+        />
+      </label>
     </aside>
   );
 }
@@ -1121,7 +1121,7 @@ function ProjectLibrary({
 function EmptyState({ body, title, nextStep }: { body: string; title: string; nextStep?: string }) {
   return (
     <div className="emptyState">
-      <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="56" height="62" />
+      <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="56" height="60" />
       <h3>{title}</h3>
       <p>{body}</p>
       {nextStep ? <p>{nextStep}</p> : null}

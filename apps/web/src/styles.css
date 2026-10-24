@@ -28,6 +28,7 @@
   color: var(--ink);
   background: var(--bg);
   font-family: Figtree, system-ui, sans-serif;
+  font-size: 16px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -58,7 +59,10 @@
 .brandMark {
   display: block;
   width: 28px;
-  height: auto;
+  height: 30px;
+  object-fit: contain;
+  /* Match the transparent margins in the design reference. */
+  padding: 1.2px;
   filter: var(--lion-filter);
 }
 
@@ -69,6 +73,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  line-height: 1.55;
 }
 
 button {
@@ -115,6 +120,7 @@ textarea:disabled {
   color: var(--mute);
   font-size: 12px;
   font-weight: 700;
+  margin-bottom: 10px;
 }
 
 textarea {
@@ -155,7 +161,7 @@ button:focus-visible,
   background: var(--hi);
   color: var(--ink);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .compactList,
@@ -180,7 +186,7 @@ button:focus-visible,
 
 .workflowDetails summary {
   cursor: pointer;
-  font-weight: 750;
+  font-weight: 600;
 }
 
 .workflowDetails ol {
@@ -228,7 +234,7 @@ button:focus-visible,
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 12px;
-  font-weight: 750;
+  font-weight: 600;
   background: var(--bg);
   color: var(--ink);
   position: relative;
@@ -239,6 +245,12 @@ button:focus-visible,
 
 .fileButton.fullWidth {
   width: 100%;
+  flex: none;
+  padding: 11px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--brand);
+  color: var(--bg);
 }
 
 .fileButton input {
@@ -302,7 +314,7 @@ button:focus-visible,
 
 .brandBlock h1 {
   margin: 0;
-  line-height: 1.15;
+  line-height: inherit;
   color: var(--brand);
   font-size: 19px;
   letter-spacing: -0.01em;
@@ -313,7 +325,7 @@ button:focus-visible,
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  gap: 10px;
+  gap: 0;
 }
 
 .newChatButton {
@@ -324,6 +336,7 @@ button:focus-visible,
   background: transparent;
   text-align: left;
   font-weight: 600;
+  margin-bottom: 10px;
 }
 
 .newChatButton::before {
@@ -342,7 +355,7 @@ button:focus-visible,
 
 .itemButton {
   display: grid;
-  gap: 5px;
+  gap: 2px;
   width: 100%;
   color: inherit;
   text-align: left;
@@ -364,6 +377,7 @@ button:focus-visible,
 .itemButton small {
   color: var(--mute);
   font-size: 11px;
+  line-height: 1.2;
 }
 
 .workspaceSwitcher {
@@ -399,7 +413,9 @@ button:focus-visible,
 }
 
 .switcherButton small {
-  display: block;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -460,10 +476,11 @@ button:focus-visible,
   min-height: 0;
 }
 
-.setupSurface {
+.chatSurface.setupSurface {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
+  padding-bottom: 150px;
   gap: 16px;
 }
 
@@ -475,11 +492,13 @@ button:focus-visible,
 .creationScreen {
   width: min(420px, 100%);
   margin-inline: auto;
-  padding-block: 20px 60px;
+  padding-block: 0 60px;
 }
 
 .creationScreen .brandMark {
   width: 52px;
+  height: 56px;
+  padding: 2.25px;
   margin-bottom: 18px;
 }
 
@@ -514,7 +533,7 @@ button:focus-visible,
 
 .creationForm .primaryButton {
   min-height: 38px;
-  border: 1px solid var(--line);
+  border: 0;
   padding: 8px 12px;
   border-color: var(--brand);
   background: var(--brand);
@@ -609,6 +628,8 @@ button:focus-visible,
 }
 
 .chatSurface {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -618,6 +639,7 @@ button:focus-visible,
 
 .thread {
   display: grid;
+  width: 100%;
   max-width: 760px;
   margin-inline: auto;
   gap: 26px;
@@ -647,6 +669,16 @@ button:focus-visible,
   display: flex;
   flex-direction: column;
   gap: 26px;
+}
+
+.thread:has(.emptyState) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.thread:has(.emptyState) .messageList {
+  flex: 1;
 }
 
 .messageBubble {
@@ -741,7 +773,7 @@ button:focus-visible,
 }
 
 .composerDock {
-  padding: 18px 22px calc(18px + env(safe-area-inset-bottom, 0px));
+  padding: 30px 22px calc(18px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(to top, var(--bg) 62%, transparent);
 }
 
@@ -766,7 +798,7 @@ button:focus-visible,
 .composer textarea {
   flex: 1;
   min-width: 0;
-  min-height: 40px;
+  min-height: calc(1.45em + 18px);
   max-height: 160px;
   padding: 9px 6px;
   border: 0;
@@ -826,7 +858,7 @@ button:focus-visible,
 
 .pendingFiles span {
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 2px 10px;
   background: var(--hi);
   color: var(--ink);
   font-size: 13px;
@@ -952,6 +984,13 @@ button:focus-visible,
   font-size: 15px;
 }
 
+.documentList {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+}
+
 .documentList strong {
   overflow-wrap: anywhere;
   font-weight: 500;
@@ -965,11 +1004,11 @@ button:focus-visible,
 
 .documentActions button {
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 4px 8px;
   color: var(--ink);
   min-height: 32px;
   border: 0;
-  background: var(--side);
+  background: transparent;
   font-size: 13px;
   font-weight: 400;
 }
@@ -1023,6 +1062,7 @@ button:focus-visible,
     background: transparent;
     color: var(--ink);
     font-size: 20px;
+    padding: 2px 8px;
   }
 
   .workspaceHeader {
@@ -1057,7 +1097,7 @@ button:focus-visible,
   display: grid;
   place-content: center;
   color: var(--mute);
-  min-height: min(420px, 60dvh);
+  min-height: 0;
   max-width: 560px;
   margin: auto;
   padding: 20px 0 60px;
@@ -1066,6 +1106,8 @@ button:focus-visible,
 
 .emptyState .brandMark {
   width: 56px;
+  height: 60px;
+  padding: 2.4px;
   margin: 0 auto 18px;
 }
 
