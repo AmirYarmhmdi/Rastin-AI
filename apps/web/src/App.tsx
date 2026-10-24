@@ -692,7 +692,13 @@ function App() {
 
         <div className="contentGrid">
           <section className={`chatSurface${activeCreationScreen ? " setupSurface" : ""}`} aria-label="Selected private chat">
-            <ErrorStack errors={[appError, projectError, chatError]} />
+            <ErrorStack errors={[
+              { message: appError, action: creationScreen === "organization" ? "Your workspace name is kept. Try Continue again, or ask your workspace owner for help." : "Reload this page to retry loading your workspaces." },
+              { message: projectError, action: creationScreen === "project" ? "Your project details are kept. Try Continue again, or ask your workspace owner if access is denied." : "Choose a workspace again, or reload this page to retry loading its projects." },
+              { message: chatError, action: "Try your chat action again. Your unsent text and selected attachments are kept here." }
+            ]} />
+            {isLoadingOrganizations ? <p className="muted" role="status">Loading workspaces...</p> : null}
+            {isLoadingProjects ? <p className="muted" role="status">Loading projects...</p> : null}
             {activeCreationScreen ? (
               <div className="creationScreen">
                 <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="52" height="58" />
@@ -752,11 +758,12 @@ function App() {
               <EmptyState
                 title="Project library access"
                 body="Your current project role can read project files, but cannot create or continue private chats."
+                nextStep="Open Files to browse and download this project’s library."
               />
             ) : null}
             {!activeCreationScreen && selectedProject && canChat ? (
               <ChatThread
-                isLoading={isLoadingSession}
+                isLoading={isLoadingSession || isLoadingSessions}
                 session={sessionDetail}
                 lastSubmission={lastSubmission}
               />
@@ -765,8 +772,8 @@ function App() {
 
         </div>
 
-        {!activeCreationScreen ? <div className="composerDock">
-          <form className="composer" onSubmit={handleSubmitMessage}>
+        {!activeCreationScreen && selectedProject ? <div className="composerDock">
+          {canChat ? <form className="composer" onSubmit={handleSubmitMessage}>
             <label className="visuallyHidden" htmlFor="message">Message</label>
             <div className="pendingFiles" aria-live="polite">
               {messageFiles.map((file) => (
@@ -807,7 +814,7 @@ function App() {
               <span aria-hidden="true">{isSubmittingMessage ? "…" : "↑"}</span>
             </button>
             <span className="visuallyHidden" role="status">{isSubmittingMessage ? "Sending..." : ""}</span>
-          </form>
+          </form> : <p className="viewOnly">View only. You can browse files but not chat.</p>}
         </div> : null}
       </section>
       {isLibraryOpen && selectedProject ? (
@@ -884,14 +891,15 @@ function ChatThread({
   session: ProjectSession | null;
 }) {
   if (isLoading) {
-    return <p className="muted">Loading chat...</p>;
+    return <p className="muted" role="status">Loading chat...</p>;
   }
 
   if (!session) {
     return (
       <EmptyState
-        title="Start a private chat"
-        body="Create or send a message to start a chat scoped to this project."
+        title="What are we working on?"
+        body="Send a message to start a private chat in this project."
+        nextStep="Use Files to browse the project library, or attach files to your question."
       />
     );
   }
@@ -907,7 +915,7 @@ function ChatThread({
       </header>
       <div className="messageList">
         {session.messages.length === 0 ? (
-          <p className="muted">No messages in this chat yet.</p>
+          <EmptyState title="What are we working on?" body="No messages in this chat yet." nextStep="Send a message or attach files to begin." />
         ) : null}
         {session.messages.map((item) => (
           <MessageBubble key={item.id} message={item} />
@@ -936,7 +944,8 @@ function MessageBubble({ message }: { message: ProjectMessage }) {
       <p>{message.content}</p>
       {message.error_message ? (
         <div className="errorBanner" role="alert">
-          {message.error_message}
+          <p>{message.error_message}</p>
+          <p className="errorHint">Try sending your question again. If it keeps failing, contact your workspace owner.</p>
         </div>
       ) : null}
       {message.citations.length || message.sources.length ? (
@@ -1079,7 +1088,8 @@ function ProjectLibrary({
       </header>
       {error ? (
         <div className="errorBanner" role="alert">
-          {error}
+          <p>{error}</p>
+          <p className="errorHint">Refresh project files to check the latest state before trying again.</p>
         </div>
       ) : null}
       <label className="fileButton fullWidth">
@@ -1095,9 +1105,12 @@ function ProjectLibrary({
       {!canUpload && projectSelected ? (
         <p className="muted">Upload is not available for this project role.</p>
       ) : null}
-      {isLoading ? <p className="muted">Loading project files...</p> : null}
-      {!isLoading && documents.length === 0 ? (
-        <p className="muted">No project files yet.</p>
+      {isLoading ? <p className="muted" role="status">Loading project files...</p> : null}
+      {!isLoading && !error && documents.length === 0 ? (
+        <div className="muted">
+          <p>No project files yet.</p>
+          <p>{canUpload ? "Upload a file to share it with this project." : "Ask a project member or admin to upload files, then choose Refresh."}</p>
+        </div>
       ) : null}
       <ul className="documentList">
         {documents.map((document) => (
@@ -1131,23 +1144,26 @@ function ProjectLibrary({
   );
 }
 
-function EmptyState({ body, title }: { body: string; title: string }) {
+function EmptyState({ body, title, nextStep }: { body: string; title: string; nextStep?: string }) {
   return (
     <div className="emptyState">
+      <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="56" height="62" />
       <h3>{title}</h3>
       <p>{body}</p>
+      {nextStep ? <p>{nextStep}</p> : null}
     </div>
   );
 }
 
-function ErrorStack({ errors }: { errors: (string | null)[] }) {
+function ErrorStack({ errors }: { errors: { message: string | null; action: string }[] }) {
   return (
     <>
-      {errors.filter(Boolean).map((error) => (
-        <div className="errorBanner" key={error} role="alert">
-          {error}
+      {errors.map(({ message, action }, index) => message ? (
+        <div className="errorBanner" key={`${index}-${message}`} role="alert">
+          <p>{message}</p>
+          <p className="errorHint">{action}</p>
         </div>
-      ))}
+      ) : null)}
     </>
   );
 }

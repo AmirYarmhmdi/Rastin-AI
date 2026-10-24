@@ -290,6 +290,43 @@ describe("App", () => {
     expect(files).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("shows viewers a quiet view-only line and read-only library controls", async () => {
+    const fetchMock = installFetch({ viewer: true });
+    render(<App />);
+    expect(await screen.findByText("View only. You can browse files but not chat.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Message" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Attach files")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+    expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+    expect(screen.getByLabelText("Upload file")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/sessions"))).toBe(false);
+  });
+
+  it("explains a library loading error and lets Refresh retry it", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let unavailable = true;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (unavailable && String(input) === `/api/v1/projects/${projectId}/library/documents` && !init?.method) {
+        return jsonResponse({ error: { message: "Project files could not be loaded." } }, 503);
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Files · 0" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Project files could not be loaded.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Refresh project files to check the latest state before trying again.");
+    expect(screen.queryByText("No project files yet.")).not.toBeInTheDocument();
+    unavailable = false;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh project files" }));
+    await screen.findByRole("button", { name: "Files · 1" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+  });
+
   it("allows members to chat and upload while keeping deletion disabled", async () => {
     const fetchMock = installFetch({ member: true });
     render(<App />);
