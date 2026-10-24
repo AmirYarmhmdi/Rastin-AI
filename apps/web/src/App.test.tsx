@@ -311,6 +311,60 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Create org" })).toBeEnabled();
   });
 
+  it("sends every selected attachment and keeps returned evidence and workflow details", async () => {
+    const fetchMock = installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    const files = [
+      new File(["first"], "first.txt", { type: "text/plain" }),
+      new File(["second"], "second.csv", { type: "text/csv" })
+    ];
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize both files" } });
+    fireEvent.change(screen.getByLabelText("Attach files"), { target: { files } });
+    expect(screen.getByText("first.txt (5 B)")).toBeInTheDocument();
+    expect(screen.getByText("second.csv (6 B)")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Answer from project context.");
+    const submission = fetchMock.mock.calls.find(([input, init]) => String(input).endsWith("/messages") && init?.method === "POST");
+    const body = submission?.[1]?.body as FormData;
+    expect(body.get("message")).toBe("Summarize both files");
+    expect(body.getAll("files")).toEqual(files);
+    expect(screen.getAllByText("roadmap.md").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByText("Workflow details"));
+    expect(screen.getByText("Project retrieval")).toBeVisible();
+    expect(screen.getByText("Used project library and chat attachments.")).toBeVisible();
+    expect(screen.getByLabelText("Message")).toHaveValue("");
+    expect(screen.queryByText("first.txt (5 B)")).not.toBeInTheDocument();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("creates a private chat with the existing session API", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    const created = { ...sessionSummary, id: "new-session", title: "New private chat" };
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/sessions` && init?.method === "POST") {
+        return jsonResponse(created, 201);
+      }
+      if (String(input) === `/api/v1/projects/${projectId}/sessions/${created.id}`) {
+        return jsonResponse({ ...created, messages: [] });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "New chat" }));
+    expect(await screen.findByText("No messages in this chat yet.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${projectId}/sessions`, expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ title: null })
+    }));
+    expect(window.localStorage.getItem("rastin_ai.selectedSessionId")).toBe(created.id);
+    fireEvent.click(screen.getByRole("button", { name: /Untitled chat/ }));
+    expect(await screen.findByText("Budget review is complete.")).toBeInTheDocument();
+    expect(window.localStorage.getItem("rastin_ai.selectedSessionId")).toBe(sessionId);
+  });
+
   it("switches projects and workspaces using the existing stored selections and scoped requests", async () => {
     const otherOrg = { ...organization, id: "other-org", name: "Other workspace" };
     const otherProject = { ...adminProject, id: "other-project", name: "Other project" };

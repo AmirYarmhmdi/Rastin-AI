@@ -69,6 +69,7 @@ function App() {
   const switcherRef = useRef<HTMLDivElement>(null);
   const switcherButtonRef = useRef<HTMLButtonElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedOrganization = useMemo(
     () =>
@@ -97,6 +98,14 @@ function App() {
       document.getElementById(`${activeCreationScreen}-name`)?.focus();
     }
   }, [activeCreationScreen]);
+
+  useEffect(() => {
+    const textarea = messageRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    }
+  }, [message, activeCreationScreen, canChat]);
 
   useEffect(() => {
     if (!isSwitcherOpen && !isNavigationOpen) {
@@ -642,17 +651,19 @@ function App() {
       <section className="workspace" aria-label="Project workspace">
         <header className="workspaceHeader">
           <button className="menuButton" type="button" ref={menuButtonRef} aria-label="Menu" aria-expanded={isNavigationOpen} aria-controls="project-navigation" onClick={() => setIsNavigationOpen((current) => !current)}>☰</button>
-          <div>
-            <p className="eyebrow">{selectedOrganization?.name || "No organization"}</p>
-            <h2>{selectedProject?.name || "Select a project"}</h2>
-            {selectedProject?.description ? <p>{selectedProject.description}</p> : null}
-          </div>
+          <h2>{selectedProject?.name || "Rastin-AI"}</h2>
           {selectedProject ? (
-            <div className="permissionLine" aria-label="Project permissions">
-              {selectedProject.permissions.map((permission) => (
-                <span key={permission}>{permission}</span>
-              ))}
-            </div>
+            <details className="projectContext">
+              <summary>{selectedProject.effective_role}</summary>
+              <div className="projectContextContent">
+                {selectedProject.description ? <p>{selectedProject.description}</p> : null}
+                <div className="permissionLine" aria-label="Project permissions">
+                  {selectedProject.permissions.map((permission) => (
+                    <span key={permission}>{permission}</span>
+                  ))}
+                </div>
+              </div>
+            </details>
           ) : null}
         </header>
 
@@ -744,25 +755,21 @@ function App() {
           /> : null}
         </div>
 
-        {!activeCreationScreen ? <form className="composer" onSubmit={handleSubmitMessage}>
-          <label htmlFor="message">Message</label>
-          <textarea
-            id="message"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder={
-              canChat
-                ? "Ask a project-scoped question..."
-                : "Private chat is unavailable for this project role."
-            }
-            rows={3}
-            disabled={!selectedProject || !canChat || isSubmittingMessage}
-          />
-          <div className="composerFooter">
-            <label className="fileButton">
-              Attach files
+        {!activeCreationScreen ? <div className="composerDock">
+          <form className="composer" onSubmit={handleSubmitMessage}>
+            <label className="visuallyHidden" htmlFor="message">Message</label>
+            <div className="pendingFiles" aria-live="polite">
+              {messageFiles.map((file) => (
+                <span key={`${file.name}-${file.size}`}>
+                  {file.name} ({formatBytes(file.size)})
+                </span>
+              ))}
+            </div>
+            <label className="fileButton attachButton" title="Attach files">
+              <span aria-hidden="true">+</span>
               <input
                 key={messageInputKey}
+                aria-label="Attach files"
                 multiple
                 type="file"
                 disabled={!selectedProject || !canChat || isSubmittingMessage}
@@ -771,22 +778,27 @@ function App() {
                 }
               />
             </label>
-            <div className="pendingFiles" aria-live="polite">
-              {messageFiles.map((file) => (
-                <span key={`${file.name}-${file.size}`}>
-                  {file.name} ({formatBytes(file.size)})
-                </span>
-              ))}
-            </div>
+            <textarea
+              id="message"
+              ref={messageRef}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder={canChat ? "Message Rastin-AI" : "Private chat is unavailable for this project role."}
+              rows={1}
+              disabled={!selectedProject || !canChat || isSubmittingMessage}
+            />
             <button
-              className="primaryButton"
+              className="sendButton"
+              aria-label="Send"
+              title="Send"
               disabled={!selectedProject || !canChat || !message.trim() || isSubmittingMessage}
               type="submit"
             >
-              {isSubmittingMessage ? "Sending..." : "Send"}
+              <span aria-hidden="true">{isSubmittingMessage ? "…" : "↑"}</span>
             </button>
-          </div>
-        </form> : null}
+            <span className="visuallyHidden" role="status">{isSubmittingMessage ? "Sending..." : ""}</span>
+          </form>
+        </div> : null}
       </section>
     </main>
   );
