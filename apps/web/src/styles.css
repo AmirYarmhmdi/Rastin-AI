@@ -660,6 +660,44 @@ summary:focus-visible,
   margin: 0;
   font-size: 14px;
   font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.threadHeader > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.chatTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.renameChat {
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--mute);
+  font-size: 12px;
+}
+
+.renameForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.renameForm input {
+  flex: 1 1 180px;
+  width: 100%;
+  min-width: 0;
+}
+
+.renameForm .errorBanner {
+  flex-basis: 100%;
 }
 
 .threadHeader .eyebrow {

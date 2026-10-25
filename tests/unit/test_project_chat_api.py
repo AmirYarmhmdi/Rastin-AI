@@ -48,6 +48,13 @@ class FakeProjectConversationService:
     def __init__(self) -> None:
         self.created_title: str | None = None
 
+    async def rename_session(
+        self, context: ProjectAccessContext, session_id: UUID, *, title: str
+    ) -> ConversationSessionSummary:
+        assert context.project.id == PROJECT_ID
+        assert session_id == SESSION_ID
+        return _summary(title=title)
+
     async def create_session(
         self,
         context: ProjectAccessContext,
@@ -173,6 +180,14 @@ def test_project_chat_routes_return_safe_typed_contracts(monkeypatch) -> None:
         detail_response = client.get(
             f"/api/v1/projects/{PROJECT_ID}/sessions/{SESSION_ID}"
         )
+        rename_response = client.patch(
+            f"/api/v1/projects/{PROJECT_ID}/sessions/{SESSION_ID}",
+            json={"title": "Renamed chat"},
+        )
+        invalid_rename = client.patch(
+            f"/api/v1/projects/{PROJECT_ID}/sessions/{SESSION_ID}",
+            json={"title": "x" * 256},
+        )
         message_response = client.post(
             f"/api/v1/projects/{PROJECT_ID}/sessions/{SESSION_ID}/messages",
             data={"message": "hello"},
@@ -187,6 +202,9 @@ def test_project_chat_routes_return_safe_typed_contracts(monkeypatch) -> None:
     assert create_response.json()["title"] == " Launch "
     assert list_response.status_code == 200
     assert detail_response.status_code == 200
+    assert rename_response.status_code == 200
+    assert rename_response.json()["title"] == "Renamed chat"
+    assert invalid_rename.status_code == 422
     assert len(detail_response.json()["messages"]) == 1
     assert message_response.status_code == 200
     payload = message_response.json()

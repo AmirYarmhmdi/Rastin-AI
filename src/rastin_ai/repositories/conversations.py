@@ -90,6 +90,17 @@ class ConversationSessionRecord:
 
 
 class ConversationRepository(Protocol):
+    async def rename_project_session(
+        self,
+        session_id: UUID,
+        *,
+        user_id: UUID,
+        organization_id: UUID,
+        project_id: UUID,
+        title: str,
+    ) -> ConversationSessionRecord | None:
+        """Rename a private project session belonging to the current user."""
+
     async def create_session(
         self, *, user_id: UUID, title: str | None = None
     ) -> ConversationSessionRecord:
@@ -213,6 +224,27 @@ class SQLAlchemyConversationRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def rename_project_session(
+        self,
+        session_id: UUID,
+        *,
+        user_id: UUID,
+        organization_id: UUID,
+        project_id: UUID,
+        title: str,
+    ) -> ConversationSessionRecord | None:
+        record = await self._get_project_session_model(
+            session_id,
+            user_id=user_id,
+            organization_id=organization_id,
+            project_id=project_id,
+        )
+        if record is None:
+            return None
+        record.title = title
+        await self._commit_and_refresh(record)
+        return _session_record(record)
 
     async def create_session(
         self,

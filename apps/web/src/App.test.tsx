@@ -577,6 +577,97 @@ describe("App", () => {
     expect(window.localStorage.getItem("rastin_ai.selectedSessionId")).toBe(sessionId);
   });
 
+  it("renames a chat only after the project-scoped backend confirms the title", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let finish!: () => void;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/sessions/${sessionId}` && init?.method === "PATCH") {
+        return new Promise<Response>((resolve) => {
+          finish = () => resolve(jsonResponse({ ...sessionSummary, title: "CV languages" }));
+        });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Rename chat" }));
+    expect(screen.getByLabelText("Chat title")).toHaveFocus();
+    fireEvent.change(screen.getByLabelText("Chat title"), { target: { value: "  CV   languages  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save title" }));
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    expect(screen.getByRole("heading", { name: "Untitled chat" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /CV languages/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    await act(async () => { finish(); });
+    expect(screen.getByRole("heading", { name: "CV languages" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /CV languages/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Budget review is complete.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Rename chat" })).toHaveFocus();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${projectId}/sessions/${sessionId}`, expect.objectContaining({
+      method: "PATCH", body: JSON.stringify({ title: "CV   languages" })
+    }));
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it.each([403, 500])("keeps the saved title and edit draft when renaming fails (%s)", async (status) => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (init?.method === "PATCH") return jsonResponse({ error: { message: "Rename could not be saved." } }, status);
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Rename chat" }));
+    expect(screen.getByRole("button", { name: "Save title" })).toBeDisabled();
+    expect(screen.getByLabelText("Chat title")).toHaveAttribute("maxlength", "255");
+    fireEvent.change(screen.getByLabelText("Chat title"), { target: { value: "Keep this draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save title" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Rename could not be saved.");
+    expect(screen.getByRole("heading", { name: "Untitled chat" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Chat title")).toHaveValue("Keep this draft");
+    expect(screen.getByRole("button", { name: "Save title" })).toBeEnabled();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("cancels chat renaming with Escape without sending a backend update", async () => {
+    const fetchMock = installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Rename chat" }));
+    fireEvent.change(screen.getByLabelText("Chat title"), { target: { value: "Do not save this" } });
+    fireEvent.keyDown(screen.getByLabelText("Chat title"), { key: "Escape" });
+    expect(screen.queryByLabelText("Chat title")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rename chat" })).toHaveFocus();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
+  });
+
+  it("shows uploads confirmed by the backend even if a later file fails", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let uploads = 0;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/library/documents` && init?.method === "POST") {
+        uploads += 1;
+        if (uploads === 2) return jsonResponse({ error: { message: "Second upload failed." } }, 500);
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+    fireEvent.change(screen.getByLabelText("Upload file"), { target: { files: [
+      new File(["one"], "brief.md", { type: "text/markdown" }),
+      new File(["two"], "failed.md", { type: "text/markdown" })
+    ] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Second upload failed.");
+    expect(screen.getByText("brief.md")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Files · 2" })).toBeInTheDocument();
+    expect(screen.queryByText("failed.md")).not.toBeInTheDocument();
+    expect(uploads).toBe(2);
+    expectNoLegacyRoutes(fetchMock);
+  });
+
   it("switches projects and workspaces using the existing stored selections and scoped requests", async () => {
     const otherOrg = { ...organization, id: "other-org", name: "Other workspace" };
     const otherProject = { ...adminProject, id: "other-project", name: "Other project" };

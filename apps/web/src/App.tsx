@@ -11,6 +11,7 @@ import {
   listProjectDocuments,
   listProjects,
   listProjectSessions,
+  renameProjectSession,
   submitProjectMessage,
   uploadProjectDocument
 } from "./api";
@@ -489,11 +490,10 @@ function App() {
     setIsUploadingLibrary(true);
     setLibraryError(null);
     try {
-      const uploaded: ProjectDocument[] = [];
       for (const file of files) {
-        uploaded.push(await uploadProjectDocument(selectedProject.id, file));
+        const uploaded = await uploadProjectDocument(selectedProject.id, file);
+        setLibraryDocuments((current) => [uploaded, ...current]);
       }
-      setLibraryDocuments((current) => [...uploaded, ...current]);
     } catch (caught) {
       setLibraryError(errorMessage(caught));
     } finally {
@@ -536,6 +536,13 @@ function App() {
     } catch (caught) {
       setLibraryError(errorMessage(caught));
     }
+  }
+
+  async function handleRenameSession(sessionId: string, title: string) {
+    if (!selectedProject || !canChat) throw new Error("Choose a project where you can chat.");
+    const saved = await renameProjectSession(selectedProject.id, sessionId, title);
+    setSessions((current) => current.map((session) => session.id === saved.id ? saved : session));
+    setSessionDetail((current) => current?.id === saved.id ? { ...current, ...saved } : current);
   }
 
   return (
@@ -772,6 +779,7 @@ function App() {
                 isLoading={isLoadingSession || isLoadingSessions}
                 session={sessionDetail}
                 lastSubmission={lastSubmission}
+                onRename={handleRenameSession}
               />
             ) : null}
           </section>
@@ -858,11 +866,13 @@ function App() {
 function ChatThread({
   isLoading,
   lastSubmission,
-  session
+  session,
+  onRename
 }: {
   isLoading: boolean;
   lastSubmission: ProjectMessageSubmissionResponse | null;
   session: ProjectSession | null;
+  onRename: (sessionId: string, title: string) => Promise<void>;
 }) {
   if (isLoading) {
     return <p className="muted" role="status">Loading chat...</p>;
@@ -883,7 +893,7 @@ function ChatThread({
       <header className="threadHeader">
         <div>
           <p className="eyebrow">Private chat</p>
-          <h3>{session.title || "Untitled chat"}</h3>
+          <ChatTitle key={session.id} session={session} onRename={onRename} />
         </div>
         <StatusPill status={lastSubmission?.status ?? session.status} />
       </header>
@@ -901,6 +911,63 @@ function ChatThread({
       </div>
     </article>
   );
+}
+
+function ChatTitle({ session, onRename }: {
+  session: ProjectSession;
+  onRename: (sessionId: string, title: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const renameRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+    else if (wasEditing.current) renameRef.current?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving || !title.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onRename(session.id, title.trim());
+      setEditing(false);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <>
+    <div className="chatTitleRow">
+      <h3>{session.title || "Untitled chat"}</h3>
+      {!editing ? <button className="renameChat" type="button" aria-label="Rename chat" ref={renameRef} onClick={() => {
+        setTitle(session.title ?? "");
+        setError(null);
+        setEditing(true);
+      }}>Rename</button> : null}
+    </div>
+    {editing ? <form className="renameForm" onSubmit={save} onKeyDown={(event) => {
+      if (event.key === "Escape" && !saving) {
+        event.preventDefault();
+        event.stopPropagation();
+        setEditing(false);
+      }
+    }}>
+      <label className="visuallyHidden" htmlFor="chat-title">Chat title</label>
+      <input id="chat-title" ref={inputRef} value={title} maxLength={255} disabled={saving} onChange={(event) => setTitle(event.target.value)} />
+      <button type="submit" disabled={saving || !title.trim()}>{saving ? "Saving..." : "Save title"}</button>
+      <button type="button" disabled={saving} onClick={() => setEditing(false)}>Cancel rename</button>
+      {error ? <div className="errorBanner" role="alert">{error} The saved title could not be confirmed. Your edit is kept; retry Save title or reload to check.</div> : null}
+    </form> : null}
+  </>;
 }
 
 function MessageBubble({ message, submission }: { message: ProjectMessage; submission?: ProjectMessageSubmissionResponse }) {

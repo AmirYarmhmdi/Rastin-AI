@@ -89,6 +89,15 @@ class ConversationService(Protocol):
 
 
 class ProjectConversationService(Protocol):
+    async def rename_session(
+        self,
+        context: ProjectAccessContext,
+        session_id: UUID,
+        *,
+        title: str,
+    ) -> ConversationSessionSummary:
+        """Persist a title for a private project chat owned by the current user."""
+
     async def create_session(
         self,
         context: ProjectAccessContext,
@@ -154,6 +163,35 @@ class RepositoryProjectConversationService:
         self._repository = repository
         self._authorization_service = authorization_service
         self._max_messages = max_messages
+
+    async def rename_session(
+        self,
+        context: ProjectAccessContext,
+        session_id: UUID,
+        *,
+        title: str,
+    ) -> ConversationSessionSummary:
+        self._authorization_service.require_project_permission(
+            context,
+            PROJECT_PERMISSION_CHATS_CREATE,
+        )
+        normalized_title = " ".join(title.split())
+        if not normalized_title or len(normalized_title) > 255:
+            raise AppException(
+                "Chat title must contain 1 to 255 characters.",
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                error_code="INVALID_CHAT_TITLE",
+            )
+        record = await self._repository.rename_project_session(
+            session_id,
+            user_id=context.principal.user_id,
+            organization_id=context.organization.id,
+            project_id=context.project.id,
+            title=normalized_title,
+        )
+        if record is None:
+            raise ConversationSessionNotFoundError(session_id)
+        return _session_summary(record)
 
     async def create_session(
         self,
