@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -112,6 +112,7 @@ describe("App", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -439,11 +440,113 @@ describe("App", () => {
     expect(body.get("message")).toBe("Summarize both files");
     expect(body.getAll("files")).toEqual(files);
     expect(screen.getAllByText("roadmap.md").length).toBeGreaterThan(0);
+    const detailToggles = screen.getAllByText("More details");
+    fireEvent.click(detailToggles[detailToggles.length - 1]);
     fireEvent.click(screen.getByText("Workflow details"));
     expect(screen.getByText("Project retrieval")).toBeVisible();
     expect(screen.getByText("Used project library and chat attachments.")).toBeVisible();
     expect(screen.getByLabelText("Message")).toHaveValue("");
     expect(screen.queryByText("first.txt (5 B)")).not.toBeInTheDocument();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("shows a visible working message until the answer arrives", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let finish!: () => void;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input).endsWith("/messages") && init?.method === "POST") {
+        const response = await originalFetch(input, init);
+        return new Promise<Response>((resolve) => { finish = () => resolve(response); });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize the plan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Working on your answer…")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    await act(async () => { finish(); });
+    expect(await screen.findByText("Answer from project context.")).toBeVisible();
+    expect(screen.queryByText("Working on your answer…")).not.toBeInTheDocument();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it.each([false, true])("reveals only new answers progressively (skip=%s)", async (skip) => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    installFetch();
+    render(<App />);
+    expect(await screen.findByText("Budget review is complete.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show full answer" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize the plan" } });
+    vi.useFakeTimers();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send" })); });
+    const fullAnswer = screen.getByText("Answer from project context.");
+    expect(fullAnswer).toHaveClass("visuallyHidden");
+    const paragraph = fullAnswer.parentElement!;
+    const visualAnswer = paragraph.querySelector('[aria-hidden="true"]')!;
+    act(() => { vi.advanceTimersByTime(120); });
+    expect(visualAnswer.textContent!.length).toBeGreaterThan(0);
+    expect(visualAnswer.textContent!.length).toBeLessThan("Answer from project context.".length);
+    screen.getByRole("button", { name: "Show full answer" }).focus();
+    if (skip) {
+      fireEvent.click(screen.getByRole("button", { name: "Show full answer" }));
+      expect(paragraph).toHaveFocus();
+    } else {
+      act(() => { vi.advanceTimersByTime(2000); });
+    }
+    expect(paragraph).toHaveFocus();
+    expect(screen.getByText("Answer from project context.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show full answer" })).not.toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(screen.getByText("Answer from project context.")).toBeVisible();
+  });
+
+  it("shows new answers immediately when reduced motion is preferred", async () => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize the plan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Answer from project context.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show full answer" })).not.toBeInTheDocument();
+  });
+
+  it("groups repeated chunks into unique documents and keeps page and line references", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      const response = await originalFetch(input, init);
+      if (String(input) === `/api/v1/projects/${projectId}/sessions/${sessionId}`) {
+        const evidence = [
+          { document_id: documentId, filename: "resume.pdf", chunk_id: "one", page_number: 1 },
+          { document_id: documentId, filename: "resume.pdf", chunk_id: "two", page_number: 2, line_start: 7, line_end: 12 },
+          { document_id: documentId, filename: "resume.pdf", chunk_id: "three", page_number: 2, line_start: 7, line_end: 12 },
+          { document_id: "another-document", filename: "resume.pdf", page_number: 3 },
+          { document_id: "no-location", filename: "notes.txt" }
+        ];
+        return jsonResponse({ ...sessionDetail, messages: [{ ...sessionDetail.messages[1], citations: evidence, sources: evidence }] });
+      }
+      return response;
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    const toggle = screen.getByText("More details");
+    const details = toggle.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByText("Documents used")).not.toBeVisible();
+    fireEvent.click(toggle);
+    expect(within(details).getAllByText("resume.pdf", { exact: false }).length).toBe(2);
+    expect(details.querySelectorAll(".evidenceDocuments li")).toHaveLength(3);
+    expect(details.querySelectorAll(".evidenceReferences li")).toHaveLength(4);
+    expect(within(details).getByText("Page 1", { exact: false })).toBeVisible();
+    expect(within(details).getByText("Page 2 · Lines 7–12", { exact: false })).toBeVisible();
+    expect(within(details).getByText("Page 3", { exact: false })).toBeVisible();
+    expect(within(details).getByText("Page and line details were not returned.", { exact: false })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Files · 1" })).toBeInTheDocument();
     expectNoLegacyRoutes(fetchMock);
   });
 

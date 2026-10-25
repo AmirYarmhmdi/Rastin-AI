@@ -779,6 +779,7 @@ function App() {
         </div>
 
         {!activeCreationScreen && selectedProject ? <div className="composerDock">
+          {isSubmittingMessage ? <p className="answerPending" role="status">Working on your answer…</p> : null}
           {canChat ? <form className="composer" onSubmit={handleSubmitMessage}>
             <label className="visuallyHidden" htmlFor="message">Message</label>
             <div className="pendingFiles" aria-live="polite">
@@ -819,7 +820,6 @@ function App() {
             >
               <span aria-hidden="true">{isSubmittingMessage ? "…" : "↑"}</span>
             </button>
-            <span className="visuallyHidden" role="status">{isSubmittingMessage ? "Sending..." : ""}</span>
           </form> : <p className="viewOnly">View only. You can browse files but not chat.</p>}
         </div> : null}
       </section>
@@ -892,40 +892,99 @@ function ChatThread({
           <EmptyState title="What are we working on?" body="No messages in this chat yet." nextStep="Send a message or attach files to begin." />
         ) : null}
         {session.messages.map((item) => (
-          <MessageBubble key={item.id} message={item} />
+          <MessageBubble key={item.id} message={item} submission={
+            lastSubmission?.session_id === session.id && lastSubmission.assistant_message.id === item.id
+              ? lastSubmission
+              : undefined
+          } />
         ))}
       </div>
-      {lastSubmission ? (
-        <AnswerDetails
-          attachments={lastSubmission.attachments}
-          citations={lastSubmission.citations}
-          sources={lastSubmission.sources}
-          workflowDetails={lastSubmission.workflow_details}
-          workflowId={lastSubmission.workflow_id}
-        />
-      ) : null}
     </article>
   );
 }
 
-function MessageBubble({ message }: { message: ProjectMessage }) {
+function MessageBubble({ message, submission }: { message: ProjectMessage; submission?: ProjectMessageSubmissionResponse }) {
   return (
     <section className={`messageBubble ${message.role}`}>
       <header>
         <strong>{message.role === "assistant" ? "Assistant" : "You"}</strong>
         <small>{message.status} · {formatDate(message.created_at)}</small>
       </header>
-      <p>{message.content}</p>
+      <AnswerText content={message.content} animate={message.role === "assistant" && Boolean(submission)} />
       {message.error_message ? (
         <div className="errorBanner" role="alert">
           <p>{message.error_message}</p>
           <p className="errorHint">Try sending your question again. If it keeps failing, contact your workspace owner.</p>
         </div>
       ) : null}
-      {message.citations.length || message.sources.length ? (
-        <EvidenceList citations={message.citations} sources={message.sources} />
+      {message.role === "assistant" ? (
+        <AnswerDetails
+          attachments={submission?.attachments ?? []}
+          citations={[...message.citations, ...(submission?.citations ?? [])]}
+          sources={[...message.sources, ...(submission?.sources ?? [])]}
+          workflowDetails={submission?.workflow_details ?? []}
+          workflowId={message.workflow_id ?? submission?.workflow_id ?? null}
+        />
       ) : null}
     </section>
+  );
+}
+
+function AnswerText({ content, animate }: { content: string; animate: boolean }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const revealButtonRef = useRef<HTMLButtonElement>(null);
+  const characters = useMemo(() => Array.from(content), [content]);
+  const [visibleCount, setVisibleCount] = useState(
+    () => animate && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === false ? 0 : characters.length
+  );
+  const [skipped, setSkipped] = useState(false);
+
+  useEffect(() => {
+    const preference = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    function finishReveal() {
+      if (document.activeElement === revealButtonRef.current) textRef.current?.focus();
+      setVisibleCount(characters.length);
+    }
+    if (!animate || skipped || !preference || preference.matches) {
+      finishReveal();
+      return;
+    }
+    let count = 0;
+    setVisibleCount(0);
+    const timer = window.setInterval(() => {
+      count = Math.min(characters.length, count + Math.max(1, Math.ceil(characters.length / 75)));
+      if (count === characters.length) {
+        window.clearInterval(timer);
+        finishReveal();
+      } else {
+        setVisibleCount(count);
+      }
+    }, 24);
+    function respectReducedMotion(event: MediaQueryListEvent) {
+      if (event.matches) {
+        window.clearInterval(timer);
+        finishReveal();
+      }
+    }
+    preference.addEventListener("change", respectReducedMotion);
+    return () => {
+      window.clearInterval(timer);
+      preference.removeEventListener("change", respectReducedMotion);
+    };
+  }, [animate, characters, skipped]);
+
+  const revealing = visibleCount < characters.length;
+  return (
+    <div className="answerText">
+      <p ref={textRef} tabIndex={animate ? -1 : undefined}>
+        {revealing ? <span className="visuallyHidden">{content}</span> : null}
+        <span aria-hidden={revealing || undefined}>{characters.slice(0, visibleCount).join("")}</span>
+      </p>
+      {revealing ? <button className="revealControl" ref={revealButtonRef} type="button" onClick={() => {
+        setSkipped(true);
+        textRef.current?.focus();
+      }}>Show full answer</button> : null}
+    </div>
   );
 }
 
@@ -943,42 +1002,43 @@ function AnswerDetails({
   workflowId: string | null;
 }) {
   return (
-    <aside className="answerDetails" aria-label="Latest answer details">
-      {workflowId ? <p className="identifier">Workflow {workflowId}</p> : null}
-      {attachments.length ? (
-        <section>
-          <h4>Attachments</h4>
-          <ul className="compactList">
-            {attachments.map((attachment) => (
-              <li key={attachment.document_id}>
-                <span>{attachment.filename}</span>
-                <small>
-                  {attachment.content_type || "unknown type"} ·{" "}
-                  {formatBytes(attachment.size_bytes)} · {attachment.status}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {citations.length || sources.length ? (
+    <details className="answerDetails">
+      <summary>More details</summary>
+      <div className="answerDetailsContent">
         <EvidenceList citations={citations} sources={sources} />
-      ) : null}
-      {workflowDetails.length ? (
-        <details className="workflowDetails">
-          <summary>Workflow details</summary>
-          <ol>
-            {workflowDetails.map((detail, index) => (
-              <li key={`${detail.label}-${index}`}>
-                <strong>{detail.label}</strong>
-                <span>{detail.status}</span>
-                {detail.summary ? <p>{detail.summary}</p> : null}
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
-    </aside>
+        {workflowId ? <p className="identifier">Workflow {workflowId}</p> : null}
+        {attachments.length ? (
+          <section>
+            <h4>Attachments</h4>
+            <ul className="compactList">
+              {attachments.map((attachment) => (
+                <li key={attachment.document_id}>
+                  <span>{attachment.filename}</span>
+                  <small>
+                    {attachment.content_type || "unknown type"} ·{" "}
+                    {formatBytes(attachment.size_bytes)} · {attachment.status}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {workflowDetails.length ? (
+          <details className="workflowDetails">
+            <summary>Workflow details</summary>
+            <ol>
+              {workflowDetails.map((detail, index) => (
+                <li key={`${detail.label}-${index}`}>
+                  <strong>{detail.label}</strong>
+                  <span>{detail.status}</span>
+                  {detail.summary ? <p>{detail.summary}</p> : null}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -989,28 +1049,37 @@ function EvidenceList({
   citations: Record<string, unknown>[];
   sources: Record<string, unknown>[];
 }) {
+  const documents = new Map<string, { label: string; locations: Set<string> }>();
+  for (const evidence of [...citations, ...sources]) {
+    const label = evidenceLabel(evidence);
+    const key = typeof evidence.document_id === "string" && evidence.document_id.trim()
+      ? `id:${evidence.document_id}`
+      : `label:${label}`;
+    const document = documents.get(key) ?? { label, locations: new Set<string>() };
+    const location = evidenceLocation(evidence);
+    if (location) document.locations.add(location);
+    documents.set(key, document);
+  }
+  const uniqueDocuments = [...documents.entries()];
   return (
     <section className="evidenceBlock">
-      {citations.length ? (
-        <>
-          <h4>Citations</h4>
-          <ul className="compactList">
-            {citations.map((citation, index) => (
-              <li key={`citation-${index}`}>{evidenceLabel(citation)}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {sources.length ? (
-        <>
-          <h4>Sources</h4>
-          <ul className="compactList">
-            {sources.map((source, index) => (
-              <li key={`source-${index}`}>{evidenceLabel(source)}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
+      <h4>Documents used</h4>
+      {uniqueDocuments.length ? <ol className="evidenceDocuments">
+        {uniqueDocuments.map(([key, document], index) => (
+          <li key={key}><span className="referenceNumber">[{index + 1}]</span> {document.label}</li>
+        ))}
+      </ol> : <p>No document references were returned for this answer.</p>}
+      {uniqueDocuments.length ? <>
+        <h4>References</h4>
+        <p>Retrieved passages supplied with this answer:</p>
+        <ul className="evidenceReferences">
+          {uniqueDocuments.flatMap(([key, document], index) => (
+            [...(document.locations.size ? document.locations : ["Page and line details were not returned."])].map((location) => (
+              <li key={`${key}-${location}`}><span className="referenceNumber">[{index + 1}]</span> {location}</li>
+            ))
+          ))}
+        </ul>
+      </> : null}
     </section>
   );
 }
@@ -1211,7 +1280,27 @@ function evidenceLabel(value: Record<string, unknown>): string {
       return candidate;
     }
   }
-  return JSON.stringify(value);
+  return "Document";
+}
+
+function evidenceLocation(value: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  function addRange(label: string, start: unknown, end?: unknown) {
+    if (typeof start !== "number" || !Number.isFinite(start) || start < 0) return;
+    const range = typeof end === "number" && Number.isFinite(end) && end > start;
+    parts.push(`${label}${range ? "s" : ""} ${start}${range ? `–${end}` : ""}`);
+  }
+  if (typeof value.sheet_name === "string" && value.sheet_name.trim()) parts.push(`Sheet ${value.sheet_name}`);
+  addRange("Page", value.page_number);
+  addRange("Line", value.line_start, value.line_end);
+  addRange("Paragraph", value.paragraph_index);
+  addRange("Table", value.table_index);
+  addRange("Row", value.row_start, value.row_end);
+  if (typeof value.json_path === "string" && value.json_path.trim()) parts.push(`JSON ${value.json_path}`);
+  if (parts.length) return parts.join(" · ");
+  return typeof value.source_location === "string" && value.source_location.trim()
+    ? value.source_location
+    : null;
 }
 
 function formatDate(value: string): string {

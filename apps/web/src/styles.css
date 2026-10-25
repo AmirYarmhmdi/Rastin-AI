@@ -146,6 +146,8 @@ input {
 input:focus,
 textarea:focus,
 button:focus-visible,
+summary:focus-visible,
+.answerText p:focus-visible,
 .fileButton:focus-within {
   outline: 3px solid var(--brand);
   outline-offset: 2px;
@@ -500,6 +502,7 @@ button:focus-visible,
   height: 56px;
   padding: 2.25px;
   margin-bottom: 18px;
+  margin-inline: auto;
 }
 
 .creationScreen h2 {
@@ -720,10 +723,8 @@ button:focus-visible,
 }
 
 .evidenceBlock {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 14px;
+  display: grid;
+  gap: 8px;
   font-size: 13px;
   color: var(--mute);
 }
@@ -734,10 +735,13 @@ button:focus-visible,
   font-weight: 500;
 }
 
-.evidenceBlock .compactList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+.evidenceDocuments,
+.evidenceReferences {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0 0 8px;
+  list-style: none;
 }
 
 .compactList li {
@@ -747,21 +751,31 @@ button:focus-visible,
   padding: 0;
 }
 
-.evidenceBlock li::before {
-  content: "•";
+.referenceNumber {
   color: var(--brand);
   margin-right: 6px;
 }
 
 .answerDetails {
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
+  color: var(--mute);
+  font-size: 13px;
+}
+
+.answerDetails > summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.answerDetailsContent {
   display: grid;
   gap: 14px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-block: 14px;
 }
 
 .answerDetails h4 {
-  margin: 0 0 8px;
+  margin: 0;
   font-size: 14px;
   font-weight: 500;
 }
@@ -770,6 +784,22 @@ button:focus-visible,
   border-top: 1px solid var(--line);
   padding-top: 16px;
   font-size: 14px;
+}
+
+.answerPending {
+  max-width: 760px;
+  margin: 0 auto 10px;
+  color: var(--mute);
+  font-size: 14px;
+}
+
+.revealControl {
+  margin-top: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--mute);
+  font-size: 12px;
 }
 
 .composerDock {
