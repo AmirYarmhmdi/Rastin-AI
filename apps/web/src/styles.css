@@ -676,8 +676,9 @@ summary:focus-visible,
 }
 
 .renameChat {
-  padding: 2px 4px;
+  padding: 4px 8px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   color: var(--mute);
   font-size: 12px;
@@ -686,7 +687,9 @@ summary:focus-visible,
 .renameForm {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  max-width: 560px;
   margin-top: 10px;
 }
 
@@ -694,10 +697,55 @@ summary:focus-visible,
   flex: 1 1 180px;
   width: 100%;
   min-width: 0;
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.renameForm button {
+  appearance: none;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mute);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.renameForm button[type="submit"] {
+  background: var(--hi);
+  color: var(--brand);
+}
+
+.renameChat:hover,
+.renameForm button:not(:disabled):hover {
+  background: var(--hi);
+  color: var(--ink);
+}
+
+.renameForm button[type="submit"]:not(:disabled):hover {
+  background: var(--line);
+}
+
+.renameChat:focus-visible,
+.renameForm input:focus,
+.renameForm button:focus-visible {
+  outline-width: 2px;
 }
 
 .renameForm .errorBanner {
   flex-basis: 100%;
+}
+
+@media (max-width: 600px) {
+  .renameForm input {
+    flex-basis: 100%;
+  }
 }
 
 .threadHeader .eyebrow {
