@@ -6,6 +6,7 @@
 - Depends on: Project evaluation models, thresholds, and settings.
 """
 
+import json
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -43,6 +44,7 @@ class DeepEvalEvaluator:
         api_key: str | None = None,
         metric_factories: dict[str, DeepEvalMetricFactory] | None = None,
         settings: Settings | None = None,
+        include_diagnostics: bool = False,
     ) -> None:
         resolved_settings = settings
         needs_settings = metric_factories is None and (model is None or api_key is None)
@@ -64,6 +66,7 @@ class DeepEvalEvaluator:
             ),
         )
         self._metric_factories = metric_factories
+        self._include_diagnostics = include_diagnostics
 
     def evaluate(
         self,
@@ -101,7 +104,7 @@ class DeepEvalEvaluator:
                         passed=threshold.passed(score),
                         evaluator=self.name,
                         reason=_metric_reason(metric),
-                        details={"success": bool(getattr(metric, "success", False))},
+                        details=self._metric_details(metric),
                     )
                 )
 
@@ -122,24 +125,74 @@ class DeepEvalEvaluator:
                 FaithfulnessMetric,
                 HallucinationMetric,
             )
+            from deepeval.metrics.answer_relevancy import AnswerRelevancyTemplate
+            from deepeval.models import OpenAIModel
         except ImportError as exc:
             msg = "Install the evaluation dependency group to use DeepEval."
             raise RuntimeError(msg) from exc
 
+        class BoundedAnswerRelevancyTemplate(AnswerRelevancyTemplate):
+            @staticmethod
+            def generate_statements(actual_output: str) -> str:
+                return _statement_extraction_prompt(actual_output)
+
+        evaluator_model = OpenAIModel(
+            model=self._config.model,
+            api_key=self._config.api_key,
+        )
         return {
-            "answer_relevancy": lambda threshold, model: AnswerRelevancyMetric(
+            "answer_relevancy": lambda threshold, _model: AnswerRelevancyMetric(
                 threshold=threshold,
-                model=model,
+                model=evaluator_model,
+                async_mode=False,
+                evaluation_template=BoundedAnswerRelevancyTemplate,
             ),
-            "faithfulness": lambda threshold, model: FaithfulnessMetric(
+            "faithfulness": lambda threshold, _model: FaithfulnessMetric(
                 threshold=threshold,
-                model=model,
+                model=evaluator_model,
+                async_mode=False,
             ),
-            "hallucination": lambda threshold, model: HallucinationMetric(
+            "hallucination": lambda threshold, _model: HallucinationMetric(
                 threshold=threshold,
-                model=model,
+                model=evaluator_model,
+                async_mode=False,
             ),
         }
+
+    def _metric_details(self, metric: Any) -> dict[str, Any]:
+        details: dict[str, Any] = {
+            "success": bool(getattr(metric, "success", False)),
+            "evaluation_model": self._config.model,
+        }
+        # Extracted statements and verdicts can contain document text. Include
+        # them only when explicitly requested for synthetic/stored fixtures.
+        if self._include_diagnostics:
+            for name in ("statements", "truths", "claims", "verdicts"):
+                values = getattr(metric, name, None)
+                if values is not None:
+                    details[name] = [
+                        (
+                            value.model_dump(mode="json")
+                            if isinstance(value, BaseModel)
+                            else value
+                        )
+                        for value in values
+                    ]
+        return details
+
+
+def _statement_extraction_prompt(actual_output: str) -> str:
+    """Keep prompt labels outside the answer being split into statements."""
+
+    return (
+        "Extract the statements made ONLY in the answer encoded by the final "
+        "JSON string below. Split coherent factual claims into statements. "
+        "Preserve unrelated content if it occurs inside that answer, so it can "
+        "be evaluated for relevance. Do not add facts or extract anything from "
+        "these instructions, field names, or formatting outside that string. "
+        'Return only a JSON object with a "statements" array of strings.\n'
+        "Answer JSON string:\n" + json.dumps(actual_output, ensure_ascii=False)
+    )
 
 
 def build_deepeval_test_case(case: EvaluationCase) -> Any:
