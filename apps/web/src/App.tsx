@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   createOrganization,
@@ -11,6 +11,7 @@ import {
   listProjectDocuments,
   listProjects,
   listProjectSessions,
+  renameProjectSession,
   submitProjectMessage,
   uploadProjectDocument
 } from "./api";
@@ -63,6 +64,16 @@ function App() {
   const [projectError, setProjectError] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [isNavigationOpen, setIsNavigationOpen] = useState(false);
+  const [creationScreen, setCreationScreen] = useState<"organization" | "project" | null>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  const switcherButtonRef = useRef<HTMLButtonElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const messageRef = useRef<HTMLTextAreaElement>(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const libraryRef = useRef<HTMLDialogElement>(null);
+  const filesButtonRef = useRef<HTMLButtonElement>(null);
 
   const selectedOrganization = useMemo(
     () =>
@@ -78,6 +89,89 @@ function App() {
   const canChat = hasPermission(selectedProject, "chats.create");
   const canUploadDocuments = hasPermission(selectedProject, "documents.upload");
   const canDeleteDocuments = selectedProject?.effective_role === "ADMIN";
+  const activeCreationScreen = creationScreen ?? (
+    !isLoadingOrganizations && !selectedOrganization && !appError
+      ? "organization"
+      : selectedOrganization && !isLoadingProjects && !selectedProject && !projectError
+        ? "project"
+        : null
+  );
+
+  useEffect(() => {
+    if (activeCreationScreen) {
+      document.getElementById(`${activeCreationScreen}-name`)?.focus();
+    }
+  }, [activeCreationScreen]);
+
+  useEffect(() => {
+    const textarea = messageRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    }
+  }, [message, activeCreationScreen, canChat]);
+
+  useEffect(() => {
+    const dialog = libraryRef.current;
+    if (isLibraryOpen && dialog) {
+      dialog.showModal();
+      dialog.querySelector<HTMLButtonElement>('[aria-label="Close project files"]')?.focus();
+      return () => dialog.close();
+    }
+  }, [isLibraryOpen]);
+
+  function closeLibrary() {
+    libraryRef.current?.close();
+    setIsLibraryOpen(false);
+    filesButtonRef.current?.focus();
+  }
+
+  useEffect(() => {
+    if (isNavigationOpen) {
+      document.getElementById("project-navigation")?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    }
+  }, [isNavigationOpen]);
+
+  useEffect(() => {
+    if (!isSwitcherOpen && !isNavigationOpen) {
+      return;
+    }
+    if (isSwitcherOpen) {
+      switcherRef.current?.querySelector<HTMLButtonElement>(".switcherPopover button")?.focus();
+    }
+    function handlePointer(event: PointerEvent) {
+      if (!switcherRef.current?.contains(event.target as Node)) {
+        setIsSwitcherOpen(false);
+      }
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        if (isSwitcherOpen) {
+          setIsSwitcherOpen(false);
+          switcherButtonRef.current?.focus();
+        } else {
+          setIsNavigationOpen(false);
+          menuButtonRef.current?.focus();
+        }
+      }
+    }
+    document.addEventListener("pointerdown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [isSwitcherOpen, isNavigationOpen]);
+
+  function closeNavigation() {
+    setIsSwitcherOpen(false);
+    setIsNavigationOpen(false);
+    if (isNavigationOpen) {
+      menuButtonRef.current?.focus();
+    } else {
+      switcherButtonRef.current?.focus();
+    }
+  }
 
   useEffect(() => {
     let isCurrent = true;
@@ -268,12 +362,14 @@ function App() {
       return;
     }
     setIsCreatingOrganization(true);
+    setCreationScreen("organization");
     setAppError(null);
     try {
       const organization = await createOrganization({ name });
       setOrganizations((current) => [...current, organization]);
       setSelectedOrganizationId(organization.id);
       setNewOrganizationName("");
+      setCreationScreen(null);
     } catch (caught) {
       setAppError(errorMessage(caught));
     } finally {
@@ -291,6 +387,7 @@ function App() {
       return;
     }
     setIsCreatingProject(true);
+    setCreationScreen("project");
     setProjectError(null);
     try {
       const project = await createProject(selectedOrganization.id, {
@@ -301,6 +398,7 @@ function App() {
       setSelectedProjectId(project.id);
       setNewProjectName("");
       setNewProjectDescription("");
+      setCreationScreen(null);
     } catch (caught) {
       setProjectError(errorMessage(caught));
     } finally {
@@ -392,11 +490,10 @@ function App() {
     setIsUploadingLibrary(true);
     setLibraryError(null);
     try {
-      const uploaded: ProjectDocument[] = [];
       for (const file of files) {
-        uploaded.push(await uploadProjectDocument(selectedProject.id, file));
+        const uploaded = await uploadProjectDocument(selectedProject.id, file);
+        setLibraryDocuments((current) => [uploaded, ...current]);
       }
-      setLibraryDocuments((current) => [...uploaded, ...current]);
     } catch (caught) {
       setLibraryError(errorMessage(caught));
     } finally {
@@ -441,99 +538,36 @@ function App() {
     }
   }
 
+  async function handleRenameSession(sessionId: string, title: string) {
+    if (!selectedProject || !canChat) throw new Error("Choose a project where you can chat.");
+    const saved = await renameProjectSession(selectedProject.id, sessionId, title);
+    setSessions((current) => current.map((session) => session.id === saved.id ? saved : session));
+    setSessionDetail((current) => current?.id === saved.id ? { ...current, ...saved } : current);
+  }
+
   return (
     <main className="appShell">
-      <aside className="sidebar" aria-label="Project navigation">
+      <aside id="project-navigation" className={`sidebar${isNavigationOpen ? " navigationOpen" : ""}`} aria-label="Project navigation">
         <header className="brandBlock">
+          <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="28" height="30" />
           <h1>Rastin-AI</h1>
-          <p>Project workspace</p>
         </header>
 
-        <section className="stack" aria-label="Organization selector">
+        <section className="privateChats" aria-label="Private chats">
           <div className="sectionHeader">
-            <h2>Organization</h2>
-            {isLoadingOrganizations ? <span>Loading</span> : null}
-          </div>
-          <SelectField
-            label="Current organization"
-            value={selectedOrganizationId ?? ""}
-            disabled={isLoadingOrganizations || organizations.length === 0}
-            onChange={(value) => setSelectedOrganizationId(value || null)}
-            options={organizations.map((organization) => ({
-              value: organization.id,
-              label: organization.name
-            }))}
-          />
-          <form className="compactForm" onSubmit={handleCreateOrganization}>
-            <label htmlFor="organization-name">Organization name</label>
-            <input
-              id="organization-name"
-              value={newOrganizationName}
-              onChange={(event) => setNewOrganizationName(event.target.value)}
-              placeholder="Create organization"
-            />
-            <button
-              className="secondaryButton"
-              disabled={!newOrganizationName.trim() || isCreatingOrganization}
-              type="submit"
-            >
-              {isCreatingOrganization ? "Creating..." : "Create org"}
-            </button>
-          </form>
-        </section>
-
-        <section className="stack" aria-label="Project selector">
-          <div className="sectionHeader">
-            <h2>Project</h2>
-            {selectedProject ? <span>{selectedProject.effective_role}</span> : null}
-          </div>
-          <SelectField
-            label="Current project"
-            value={selectedProjectId ?? ""}
-            disabled={!selectedOrganization || isLoadingProjects || projects.length === 0}
-            onChange={(value) => setSelectedProjectId(value || null)}
-            options={projects.map((project) => ({
-              value: project.id,
-              label: project.name
-            }))}
-          />
-          <form className="compactForm" onSubmit={handleCreateProject}>
-            <label htmlFor="project-name">Project name</label>
-            <input
-              id="project-name"
-              value={newProjectName}
-              onChange={(event) => setNewProjectName(event.target.value)}
-              placeholder="Create project"
-              disabled={!selectedOrganization}
-            />
-            <label htmlFor="project-description">Project description</label>
-            <input
-              id="project-description"
-              value={newProjectDescription}
-              onChange={(event) => setNewProjectDescription(event.target.value)}
-              placeholder="Optional"
-              disabled={!selectedOrganization}
-            />
-            <button
-              className="secondaryButton"
-              disabled={!selectedOrganization || !newProjectName.trim() || isCreatingProject}
-              type="submit"
-            >
-              {isCreatingProject ? "Creating..." : "Create project"}
-            </button>
-          </form>
-        </section>
-
-        <section className="stack grow" aria-label="Private chats">
-          <div className="sectionHeader">
-            <h2>Private chats</h2>
+            <h2 className="visuallyHidden">Private chats</h2>
             {isLoadingSessions ? <span>Loading</span> : null}
           </div>
           <button
-            className="primaryButton"
+            className="newChatButton"
+            aria-label="New chat"
             disabled={!selectedProject || !canChat || isCreatingSession}
             type="button"
-            onClick={() => void handleCreateSession()}
+            onClick={() => {
+              setCreationScreen(null);
+              closeNavigation();
+              void handleCreateSession();
+            }}
           >
             {isCreatingSession ? "Creating..." : "New chat"}
           </button>
@@ -551,8 +585,11 @@ function App() {
                   session.id === selectedSessionId ? "itemButton selected" : "itemButton"
                 }
                 key={session.id}
+                aria-current={session.id === selectedSessionId ? "page" : undefined}
                 type="button"
                 onClick={() => {
+                  setCreationScreen(null);
+                  closeNavigation();
                   setSelectedSessionId(session.id);
                   setLastSubmission(null);
                 }}
@@ -563,92 +600,208 @@ function App() {
             ))}
           </div>
         </section>
+        <div className="workspaceSwitcher" ref={switcherRef} onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setIsSwitcherOpen(false);
+          }
+        }}>
+          <button
+            className="switcherButton"
+            type="button"
+            ref={switcherButtonRef}
+            aria-label="Switch project or workspace"
+            aria-expanded={isSwitcherOpen}
+            aria-controls="workspace-switcher"
+            onClick={() => setIsSwitcherOpen((current) => !current)}
+          >
+            <span>
+              <strong>{selectedProject?.name || "No project"}</strong>
+              <small>{selectedOrganization?.name || "No workspace"}</small>
+            </span>
+            <span aria-hidden="true">⌃</span>
+          </button>
+          {isSwitcherOpen ? (
+            <div id="workspace-switcher" className="switcherPopover">
+              <section aria-label="Project selector">
+                <h2>Projects{selectedOrganization ? ` in ${selectedOrganization.name}` : ""}</h2>
+                {isLoadingProjects ? <p className="muted" role="status">Loading projects...</p> : null}
+                <div role="group" aria-label="Current project">
+                  {projects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      aria-current={project.id === selectedProjectId ? "true" : undefined}
+                      onClick={() => {
+                        setSelectedProjectId(project.id);
+                        setCreationScreen(null);
+                        closeNavigation();
+                      }}
+                    >
+                      {project.name}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" disabled={!selectedOrganization} onClick={() => {
+                  setCreationScreen("project");
+                  closeNavigation();
+                }}>New project</button>
+              </section>
+              <section aria-label="Organization selector">
+                <h2>Workspaces</h2>
+                {isLoadingOrganizations ? <p className="muted" role="status">Loading workspaces...</p> : null}
+                <div role="group" aria-label="Current organization">
+                  {organizations.map((organization) => (
+                    <button
+                      key={organization.id}
+                      type="button"
+                      aria-current={organization.id === selectedOrganizationId ? "true" : undefined}
+                      onClick={() => {
+                        setSelectedOrganizationId(organization.id);
+                        setCreationScreen(null);
+                        closeNavigation();
+                      }}
+                    >
+                      {organization.name}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => {
+                  setCreationScreen("organization");
+                  closeNavigation();
+                }}>New workspace</button>
+              </section>
+            </div>
+          ) : null}
+        </div>
       </aside>
+      {isNavigationOpen ? <button className="navigationScrim" type="button" aria-label="Close navigation" onClick={() => {
+        closeNavigation();
+        menuButtonRef.current?.focus();
+      }} /> : null}
 
       <section className="workspace" aria-label="Project workspace">
         <header className="workspaceHeader">
-          <div>
-            <p className="eyebrow">{selectedOrganization?.name || "No organization"}</p>
-            <h2>{selectedProject?.name || "Select a project"}</h2>
-            {selectedProject?.description ? <p>{selectedProject.description}</p> : null}
-          </div>
+          <button className="menuButton" type="button" ref={menuButtonRef} aria-label="Menu" aria-expanded={isNavigationOpen} aria-controls="project-navigation" onClick={() => setIsNavigationOpen((current) => !current)}>☰</button>
+          <h2>{selectedProject?.name || "Rastin-AI"}</h2>
           {selectedProject ? (
-            <div className="permissionLine" aria-label="Project permissions">
-              {selectedProject.permissions.map((permission) => (
-                <span key={permission}>{permission}</span>
-              ))}
-            </div>
+            <details className="projectContext">
+              <summary>{selectedProject.effective_role}</summary>
+              <div className="projectContextContent">
+                {selectedProject.description ? <p>{selectedProject.description}</p> : null}
+                <div className="permissionLine" aria-label="Project permissions">
+                  {selectedProject.permissions.map((permission) => (
+                    <span key={permission}>{permission}</span>
+                  ))}
+                </div>
+              </div>
+            </details>
+          ) : null}
+          {selectedProject ? (
+            <button className="filesButton" type="button" ref={filesButtonRef} aria-expanded={isLibraryOpen} aria-controls="project-files-drawer" aria-haspopup="dialog" onClick={() => setIsLibraryOpen(true)}>
+              Files · {libraryDocuments.length}
+            </button>
           ) : null}
         </header>
 
         <div className="contentGrid">
-          <section className="chatSurface" aria-label="Selected private chat">
-            <ErrorStack errors={[appError, projectError, chatError]} />
-            {!selectedOrganization && !isLoadingOrganizations ? (
-              <EmptyState
-                title="Create an organization"
-                body="Organizations contain the projects, chats, and library files you can access."
-              />
+          <section className={`chatSurface${activeCreationScreen ? " setupSurface" : ""}`} aria-label="Selected private chat">
+            <ErrorStack errors={[
+              { message: appError, action: creationScreen === "organization" ? "Your workspace name is kept. Try Continue again, or ask your workspace owner for help." : "Reload this page to retry loading your workspaces." },
+              { message: projectError, action: creationScreen === "project" ? "Your project details are kept. Try Continue again, or ask your workspace owner if access is denied." : "Choose a workspace again, or reload this page to retry loading its projects." },
+              { message: chatError, action: "Try your chat action again. Your unsent text and selected attachments are kept here." }
+            ]} />
+            {isLoadingOrganizations ? <p className="muted" role="status">Loading workspaces...</p> : null}
+            {isLoadingProjects ? <p className="muted" role="status">Loading projects...</p> : null}
+            {activeCreationScreen ? (
+              <div className="creationScreen">
+                <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="52" height="56" />
+                <p className="eyebrow visuallyHidden">{activeCreationScreen === "organization" ? "Create an organization" : "Create a project"}</p>
+                <h2>{activeCreationScreen === "organization" ? "Name your workspace" : "Name your project"}</h2>
+                <p>{activeCreationScreen === "organization" ? "Your team’s home for projects and shared files." : "Each project has its own files and private chats."}</p>
+                {activeCreationScreen === "organization" ? (
+                  <form className="creationForm" onSubmit={handleCreateOrganization}>
+                    <label className="visuallyHidden" htmlFor="organization-name">Organization name</label>
+                    <input
+                      id="organization-name"
+                      value={newOrganizationName}
+                      onChange={(event) => setNewOrganizationName(event.target.value)}
+                      placeholder="Workspace name"
+                      autoComplete="organization"
+                      disabled={isCreatingOrganization}
+                    />
+                    <button className="primaryButton" aria-label="Create org" disabled={!newOrganizationName.trim() || isCreatingOrganization} type="submit">
+                      {isCreatingOrganization ? "Creating..." : "Continue"}
+                    </button>
+                  </form>
+                ) : (
+                  <form className="creationForm" onSubmit={handleCreateProject}>
+                    <label className="visuallyHidden" htmlFor="project-name">Project name</label>
+                    <input
+                      id="project-name"
+                      value={newProjectName}
+                      onChange={(event) => setNewProjectName(event.target.value)}
+                      placeholder="Project name"
+                      disabled={!selectedOrganization || isCreatingProject}
+                    />
+                    <button className="primaryButton" aria-label="Create project" disabled={!selectedOrganization || !newProjectName.trim() || isCreatingProject} type="submit">
+                      {isCreatingProject ? "Creating..." : "Continue"}
+                    </button>
+                    <details className="creationDetails">
+                      <summary>Add a description (optional)</summary>
+                      <label htmlFor="project-description">Project description</label>
+                      <input
+                        id="project-description"
+                        value={newProjectDescription}
+                        onChange={(event) => setNewProjectDescription(event.target.value)}
+                        placeholder="Optional"
+                        disabled={!selectedOrganization || isCreatingProject}
+                      />
+                    </details>
+                  </form>
+                )}
+                {activeCreationScreen === "project" && projects.length === 0 ? (
+                  <p>This organization has no projects available to your account.</p>
+                ) : null}
+                {creationScreen && selectedProject ? (
+                  <button className="cancelCreation" type="button" disabled={isCreatingOrganization || isCreatingProject} onClick={() => setCreationScreen(null)}>Cancel</button>
+                ) : null}
+              </div>
             ) : null}
-            {selectedOrganization && !selectedProject && !isLoadingProjects ? (
-              <EmptyState
-                title="No project selected"
-                body={
-                  projects.length === 0
-                    ? "This organization has no projects available to your account."
-                    : "Choose a project to open its private chats and library."
-                }
-              />
-            ) : null}
-            {selectedProject && !canChat ? (
+            {!activeCreationScreen && selectedProject && !canChat ? (
               <EmptyState
                 title="Project library access"
                 body="Your current project role can read project files, but cannot create or continue private chats."
+                nextStep="Open Files to browse and download this project’s library."
               />
             ) : null}
-            {selectedProject && canChat ? (
+            {!activeCreationScreen && selectedProject && canChat ? (
               <ChatThread
-                isLoading={isLoadingSession}
+                isLoading={isLoadingSession || isLoadingSessions}
                 session={sessionDetail}
                 lastSubmission={lastSubmission}
+                onRename={handleRenameSession}
               />
             ) : null}
           </section>
 
-          <ProjectLibrary
-            canDelete={canDeleteDocuments}
-            canUpload={canUploadDocuments}
-            documents={libraryDocuments}
-            error={libraryError}
-            isLoading={isLoadingLibrary}
-            isUploading={isUploadingLibrary}
-            onDelete={(document) => void handleDeleteDocument(document)}
-            onDownload={(document) => void handleDownloadDocument(document)}
-            onRefresh={() => void refreshLibrary()}
-            onUpload={handleLibraryUpload}
-            projectSelected={Boolean(selectedProject)}
-          />
         </div>
 
-        <form className="composer" onSubmit={handleSubmitMessage}>
-          <label htmlFor="message">Message</label>
-          <textarea
-            id="message"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder={
-              canChat
-                ? "Ask a project-scoped question..."
-                : "Private chat is unavailable for this project role."
-            }
-            rows={3}
-            disabled={!selectedProject || !canChat || isSubmittingMessage}
-          />
-          <div className="composerFooter">
-            <label className="fileButton">
-              Attach files
+        {!activeCreationScreen && selectedProject ? <div className="composerDock">
+          {isSubmittingMessage ? <p className="answerPending" role="status">Working on your answer…</p> : null}
+          {canChat ? <form className="composer" onSubmit={handleSubmitMessage}>
+            <label className="visuallyHidden" htmlFor="message">Message</label>
+            <div className="pendingFiles" aria-live="polite">
+              {messageFiles.map((file) => (
+                <span key={`${file.name}-${file.size}`}>
+                  {file.name} ({formatBytes(file.size)})
+                </span>
+              ))}
+            </div>
+            <label className="fileButton attachButton" title="Attach files">
+              <span aria-hidden="true">+</span>
               <input
                 key={messageInputKey}
+                aria-label="Attach files"
                 multiple
                 type="file"
                 disabled={!selectedProject || !canChat || isSubmittingMessage}
@@ -657,77 +810,80 @@ function App() {
                 }
               />
             </label>
-            <div className="pendingFiles" aria-live="polite">
-              {messageFiles.map((file) => (
-                <span key={`${file.name}-${file.size}`}>
-                  {file.name} ({formatBytes(file.size)})
-                </span>
-              ))}
-            </div>
+            <textarea
+              id="message"
+              ref={messageRef}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder={canChat ? "Message Rastin-AI" : "Private chat is unavailable for this project role."}
+              rows={1}
+              disabled={!selectedProject || !canChat || isSubmittingMessage}
+            />
             <button
-              className="primaryButton"
+              className="sendButton"
+              aria-label="Send"
+              title="Send"
               disabled={!selectedProject || !canChat || !message.trim() || isSubmittingMessage}
               type="submit"
             >
-              {isSubmittingMessage ? "Sending..." : "Send"}
+              <span aria-hidden="true">{isSubmittingMessage ? "…" : "↑"}</span>
             </button>
-          </div>
-        </form>
+          </form> : <p className="viewOnly">View only. You can browse files but not chat.</p>}
+        </div> : null}
       </section>
+      {isLibraryOpen && selectedProject ? (
+        <dialog id="project-files-drawer" className="filesDrawer" aria-label="Project Library" ref={libraryRef}
+          onCancel={(event) => { event.preventDefault(); closeLibrary(); }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              closeLibrary();
+            }
+          }}
+          onClick={(event) => { if (event.target === event.currentTarget) closeLibrary(); }}
+        >
+          <ProjectLibrary
+            canDelete={canDeleteDocuments}
+            canUpload={canUploadDocuments}
+            documents={libraryDocuments}
+            error={libraryError}
+            isLoading={isLoadingLibrary}
+            isUploading={isUploadingLibrary}
+            onClose={closeLibrary}
+            onDelete={(document) => void handleDeleteDocument(document)}
+            onDownload={(document) => void handleDownloadDocument(document)}
+            onRefresh={() => void refreshLibrary()}
+            onUpload={handleLibraryUpload}
+            projectSelected={Boolean(selectedProject)}
+          />
+        </dialog>
+      ) : null}
     </main>
-  );
-}
-
-function SelectField({
-  disabled,
-  label,
-  onChange,
-  options,
-  value
-}: {
-  disabled: boolean;
-  label: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  value: string;
-}) {
-  return (
-    <label className="selectField">
-      <span>{label}</span>
-      <select
-        disabled={disabled}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">None</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 
 function ChatThread({
   isLoading,
   lastSubmission,
-  session
+  session,
+  onRename
 }: {
   isLoading: boolean;
   lastSubmission: ProjectMessageSubmissionResponse | null;
   session: ProjectSession | null;
+  onRename: (sessionId: string, title: string) => Promise<void>;
 }) {
   if (isLoading) {
-    return <p className="muted">Loading chat...</p>;
+    return <p className="muted" role="status">Loading chat...</p>;
   }
 
   if (!session) {
     return (
       <EmptyState
-        title="Start a private chat"
-        body="Create or send a message to start a chat scoped to this project."
+        title="What are we working on?"
+        body="Send a message to start a private chat in this project."
+        nextStep="Use Files to browse the project library, or attach files to your question."
       />
     );
   }
@@ -737,48 +893,165 @@ function ChatThread({
       <header className="threadHeader">
         <div>
           <p className="eyebrow">Private chat</p>
-          <h3>{session.title || "Untitled chat"}</h3>
+          <ChatTitle key={session.id} session={session} onRename={onRename} />
         </div>
         <StatusPill status={lastSubmission?.status ?? session.status} />
       </header>
       <div className="messageList">
         {session.messages.length === 0 ? (
-          <p className="muted">No messages in this chat yet.</p>
+          <EmptyState title="What are we working on?" body="No messages in this chat yet." nextStep="Send a message or attach files to begin." />
         ) : null}
         {session.messages.map((item) => (
-          <MessageBubble key={item.id} message={item} />
+          <MessageBubble key={item.id} message={item} submission={
+            lastSubmission?.session_id === session.id && lastSubmission.assistant_message.id === item.id
+              ? lastSubmission
+              : undefined
+          } />
         ))}
       </div>
-      {lastSubmission ? (
-        <AnswerDetails
-          attachments={lastSubmission.attachments}
-          citations={lastSubmission.citations}
-          sources={lastSubmission.sources}
-          workflowDetails={lastSubmission.workflow_details}
-          workflowId={lastSubmission.workflow_id}
-        />
-      ) : null}
     </article>
   );
 }
 
-function MessageBubble({ message }: { message: ProjectMessage }) {
+function ChatTitle({ session, onRename }: {
+  session: ProjectSession;
+  onRename: (sessionId: string, title: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const renameRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+    else if (wasEditing.current) renameRef.current?.focus();
+    wasEditing.current = editing;
+  }, [editing]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving || !title.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onRename(session.id, title.trim());
+      setEditing(false);
+    } catch (caught) {
+      setError(errorMessage(caught));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <>
+    <div className="chatTitleRow">
+      <h3>{session.title || "Untitled chat"}</h3>
+      {!editing ? <button className="renameChat" type="button" aria-label="Rename chat" ref={renameRef} onClick={() => {
+        setTitle(session.title ?? "");
+        setError(null);
+        setEditing(true);
+      }}>Rename</button> : null}
+    </div>
+    {editing ? <form className="renameForm" onSubmit={save} onKeyDown={(event) => {
+      if (event.key === "Escape" && !saving) {
+        event.preventDefault();
+        event.stopPropagation();
+        setEditing(false);
+      }
+    }}>
+      <label className="visuallyHidden" htmlFor="chat-title">Chat title</label>
+      <input id="chat-title" ref={inputRef} value={title} maxLength={255} disabled={saving} onChange={(event) => setTitle(event.target.value)} />
+      <button type="submit" disabled={saving || !title.trim()}>{saving ? "Saving..." : "Save title"}</button>
+      <button type="button" disabled={saving} onClick={() => setEditing(false)}>Cancel rename</button>
+      {error ? <div className="errorBanner" role="alert">{error} The saved title could not be confirmed. Your edit is kept; retry Save title or reload to check.</div> : null}
+    </form> : null}
+  </>;
+}
+
+function MessageBubble({ message, submission }: { message: ProjectMessage; submission?: ProjectMessageSubmissionResponse }) {
   return (
     <section className={`messageBubble ${message.role}`}>
       <header>
         <strong>{message.role === "assistant" ? "Assistant" : "You"}</strong>
         <small>{message.status} · {formatDate(message.created_at)}</small>
       </header>
-      <p>{message.content}</p>
+      <AnswerText content={message.content} animate={message.role === "assistant" && Boolean(submission)} />
       {message.error_message ? (
         <div className="errorBanner" role="alert">
-          {message.error_message}
+          <p>{message.error_message}</p>
+          <p className="errorHint">Try sending your question again. If it keeps failing, contact your workspace owner.</p>
         </div>
       ) : null}
-      {message.citations.length || message.sources.length ? (
-        <EvidenceList citations={message.citations} sources={message.sources} />
+      {message.role === "assistant" ? (
+        <AnswerDetails
+          attachments={submission?.attachments ?? []}
+          citations={[...message.citations, ...(submission?.citations ?? [])]}
+          sources={[...message.sources, ...(submission?.sources ?? [])]}
+          workflowDetails={submission?.workflow_details ?? []}
+          workflowId={message.workflow_id ?? submission?.workflow_id ?? null}
+        />
       ) : null}
     </section>
+  );
+}
+
+function AnswerText({ content, animate }: { content: string; animate: boolean }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const revealButtonRef = useRef<HTMLButtonElement>(null);
+  const characters = useMemo(() => Array.from(content), [content]);
+  const [visibleCount, setVisibleCount] = useState(
+    () => animate && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === false ? 0 : characters.length
+  );
+  const [skipped, setSkipped] = useState(false);
+
+  useEffect(() => {
+    const preference = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    function finishReveal() {
+      if (document.activeElement === revealButtonRef.current) textRef.current?.focus();
+      setVisibleCount(characters.length);
+    }
+    if (!animate || skipped || !preference || preference.matches) {
+      finishReveal();
+      return;
+    }
+    let count = 0;
+    setVisibleCount(0);
+    const timer = window.setInterval(() => {
+      count = Math.min(characters.length, count + Math.max(1, Math.ceil(characters.length / 75)));
+      if (count === characters.length) {
+        window.clearInterval(timer);
+        finishReveal();
+      } else {
+        setVisibleCount(count);
+      }
+    }, 24);
+    function respectReducedMotion(event: MediaQueryListEvent) {
+      if (event.matches) {
+        window.clearInterval(timer);
+        finishReveal();
+      }
+    }
+    preference.addEventListener("change", respectReducedMotion);
+    return () => {
+      window.clearInterval(timer);
+      preference.removeEventListener("change", respectReducedMotion);
+    };
+  }, [animate, characters, skipped]);
+
+  const revealing = visibleCount < characters.length;
+  return (
+    <div className="answerText">
+      <p ref={textRef} tabIndex={animate ? -1 : undefined}>
+        {revealing ? <span className="visuallyHidden">{content}</span> : null}
+        <span aria-hidden={revealing || undefined}>{characters.slice(0, visibleCount).join("")}</span>
+      </p>
+      {revealing ? <button className="revealControl" ref={revealButtonRef} type="button" onClick={() => {
+        setSkipped(true);
+        textRef.current?.focus();
+      }}>Show full answer</button> : null}
+    </div>
   );
 }
 
@@ -796,42 +1069,43 @@ function AnswerDetails({
   workflowId: string | null;
 }) {
   return (
-    <aside className="answerDetails" aria-label="Latest answer details">
-      {workflowId ? <p className="identifier">Workflow {workflowId}</p> : null}
-      {attachments.length ? (
-        <section>
-          <h4>Attachments</h4>
-          <ul className="compactList">
-            {attachments.map((attachment) => (
-              <li key={attachment.document_id}>
-                <span>{attachment.filename}</span>
-                <small>
-                  {attachment.content_type || "unknown type"} ·{" "}
-                  {formatBytes(attachment.size_bytes)} · {attachment.status}
-                </small>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {citations.length || sources.length ? (
+    <details className="answerDetails">
+      <summary>More details</summary>
+      <div className="answerDetailsContent">
         <EvidenceList citations={citations} sources={sources} />
-      ) : null}
-      {workflowDetails.length ? (
-        <details className="workflowDetails">
-          <summary>Workflow details</summary>
-          <ol>
-            {workflowDetails.map((detail, index) => (
-              <li key={`${detail.label}-${index}`}>
-                <strong>{detail.label}</strong>
-                <span>{detail.status}</span>
-                {detail.summary ? <p>{detail.summary}</p> : null}
-              </li>
-            ))}
-          </ol>
-        </details>
-      ) : null}
-    </aside>
+        {workflowId ? <p className="identifier">Workflow {workflowId}</p> : null}
+        {attachments.length ? (
+          <section>
+            <h4>Attachments</h4>
+            <ul className="compactList">
+              {attachments.map((attachment) => (
+                <li key={attachment.document_id}>
+                  <span>{attachment.filename}</span>
+                  <small>
+                    {attachment.content_type || "unknown type"} ·{" "}
+                    {formatBytes(attachment.size_bytes)} · {attachment.status}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {workflowDetails.length ? (
+          <details className="workflowDetails">
+            <summary>Workflow details</summary>
+            <ol>
+              {workflowDetails.map((detail, index) => (
+                <li key={`${detail.label}-${index}`}>
+                  <strong>{detail.label}</strong>
+                  <span>{detail.status}</span>
+                  {detail.summary ? <p>{detail.summary}</p> : null}
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -842,28 +1116,37 @@ function EvidenceList({
   citations: Record<string, unknown>[];
   sources: Record<string, unknown>[];
 }) {
+  const documents = new Map<string, { label: string; locations: Set<string> }>();
+  for (const evidence of [...citations, ...sources]) {
+    const label = evidenceLabel(evidence);
+    const key = typeof evidence.document_id === "string" && evidence.document_id.trim()
+      ? `id:${evidence.document_id}`
+      : `label:${label}`;
+    const document = documents.get(key) ?? { label, locations: new Set<string>() };
+    const location = evidenceLocation(evidence);
+    if (location) document.locations.add(location);
+    documents.set(key, document);
+  }
+  const uniqueDocuments = [...documents.entries()];
   return (
     <section className="evidenceBlock">
-      {citations.length ? (
-        <>
-          <h4>Citations</h4>
-          <ul className="compactList">
-            {citations.map((citation, index) => (
-              <li key={`citation-${index}`}>{evidenceLabel(citation)}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-      {sources.length ? (
-        <>
-          <h4>Sources</h4>
-          <ul className="compactList">
-            {sources.map((source, index) => (
-              <li key={`source-${index}`}>{evidenceLabel(source)}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
+      <h4>Documents used</h4>
+      {uniqueDocuments.length ? <ol className="evidenceDocuments">
+        {uniqueDocuments.map(([key, document], index) => (
+          <li key={key}><span className="referenceNumber">[{index + 1}]</span> {document.label}</li>
+        ))}
+      </ol> : <p>No document references were returned for this answer.</p>}
+      {uniqueDocuments.length ? <>
+        <h4>References</h4>
+        <p>Retrieved passages supplied with this answer:</p>
+        <ul className="evidenceReferences">
+          {uniqueDocuments.flatMap(([key, document], index) => (
+            [...(document.locations.size ? document.locations : ["Page and line details were not returned."])].map((location) => (
+              <li key={`${key}-${location}`}><span className="referenceNumber">[{index + 1}]</span> {location}</li>
+            ))
+          ))}
+        </ul>
+      </> : null}
     </section>
   );
 }
@@ -875,6 +1158,7 @@ function ProjectLibrary({
   error,
   isLoading,
   isUploading,
+  onClose,
   onDelete,
   onDownload,
   onRefresh,
@@ -887,6 +1171,7 @@ function ProjectLibrary({
   error: string | null;
   isLoading: boolean;
   isUploading: boolean;
+  onClose: () => void;
   onDelete: (document: ProjectDocument) => void;
   onDownload: (document: ProjectDocument) => void;
   onRefresh: () => void;
@@ -897,8 +1182,7 @@ function ProjectLibrary({
     <aside className="libraryPanel" aria-label="Project files">
       <header className="panelHeader">
         <div>
-          <p className="eyebrow">Project files</p>
-          <h3>Library</h3>
+          <h3>Project files</h3>
         </div>
         <button
           className="iconButton"
@@ -910,27 +1194,23 @@ function ProjectLibrary({
         >
           Refresh
         </button>
+        <button className="closeFilesButton" type="button" aria-label="Close project files" onClick={onClose}>×</button>
       </header>
       {error ? (
         <div className="errorBanner" role="alert">
-          {error}
+          <p>{error}</p>
+          <p className="errorHint">Refresh project files to check the latest state before trying again.</p>
         </div>
       ) : null}
-      <label className="fileButton fullWidth">
-        {isUploading ? "Uploading..." : "Upload file"}
-        <input
-          multiple
-          type="file"
-          disabled={!projectSelected || !canUpload || isUploading}
-          onChange={onUpload}
-        />
-      </label>
       {!canUpload && projectSelected ? (
         <p className="muted">Upload is not available for this project role.</p>
       ) : null}
-      {isLoading ? <p className="muted">Loading project files...</p> : null}
-      {!isLoading && documents.length === 0 ? (
-        <p className="muted">No project files yet.</p>
+      {isLoading ? <p className="muted" role="status">Loading project files...</p> : null}
+      {!isLoading && !error && documents.length === 0 ? (
+        <div className="muted">
+          <p>No project files yet.</p>
+          <p>{canUpload ? "Upload a file to share it with this project." : "Ask a project member or admin to upload files, then choose Refresh."}</p>
+        </div>
       ) : null}
       <ul className="documentList">
         {documents.map((document) => (
@@ -960,27 +1240,40 @@ function ProjectLibrary({
           </li>
         ))}
       </ul>
+      <label className="fileButton fullWidth">
+        {isUploading ? "Uploading..." : "Upload file"}
+        <input
+          aria-label="Upload file"
+          multiple
+          type="file"
+          disabled={!projectSelected || !canUpload || isUploading}
+          onChange={onUpload}
+        />
+      </label>
     </aside>
   );
 }
 
-function EmptyState({ body, title }: { body: string; title: string }) {
+function EmptyState({ body, title, nextStep }: { body: string; title: string; nextStep?: string }) {
   return (
     <div className="emptyState">
+      <img className="brandMark" src="/assets/rastin-lion.png" alt="" width="56" height="60" />
       <h3>{title}</h3>
       <p>{body}</p>
+      {nextStep ? <p>{nextStep}</p> : null}
     </div>
   );
 }
 
-function ErrorStack({ errors }: { errors: (string | null)[] }) {
+function ErrorStack({ errors }: { errors: { message: string | null; action: string }[] }) {
   return (
     <>
-      {errors.filter(Boolean).map((error) => (
-        <div className="errorBanner" key={error} role="alert">
-          {error}
+      {errors.map(({ message, action }, index) => message ? (
+        <div className="errorBanner" key={`${index}-${message}`} role="alert">
+          <p>{message}</p>
+          <p className="errorHint">{action}</p>
         </div>
-      ))}
+      ) : null)}
     </>
   );
 }
@@ -1054,7 +1347,27 @@ function evidenceLabel(value: Record<string, unknown>): string {
       return candidate;
     }
   }
-  return JSON.stringify(value);
+  return "Document";
+}
+
+function evidenceLocation(value: Record<string, unknown>): string | null {
+  const parts: string[] = [];
+  function addRange(label: string, start: unknown, end?: unknown) {
+    if (typeof start !== "number" || !Number.isFinite(start) || start < 0) return;
+    const range = typeof end === "number" && Number.isFinite(end) && end > start;
+    parts.push(`${label}${range ? "s" : ""} ${start}${range ? `–${end}` : ""}`);
+  }
+  if (typeof value.sheet_name === "string" && value.sheet_name.trim()) parts.push(`Sheet ${value.sheet_name}`);
+  addRange("Page", value.page_number);
+  addRange("Line", value.line_start, value.line_end);
+  addRange("Paragraph", value.paragraph_index);
+  addRange("Table", value.table_index);
+  addRange("Row", value.row_start, value.row_end);
+  if (typeof value.json_path === "string" && value.json_path.trim()) parts.push(`JSON ${value.json_path}`);
+  if (parts.length) return parts.join(" · ");
+  return typeof value.source_location === "string" && value.source_location.trim()
+    ? value.source_location
+    : null;
 }
 
 function formatDate(value: string): string {

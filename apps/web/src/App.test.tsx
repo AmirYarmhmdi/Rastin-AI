@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
@@ -112,6 +112,7 @@ describe("App", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -152,6 +153,8 @@ describe("App", () => {
     render(<App />);
 
     expect((await screen.findAllByText("Alpha Project")).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "New project" }));
     fireEvent.change(screen.getByLabelText("Project name"), {
       target: { value: "Restricted Project" }
     });
@@ -224,6 +227,7 @@ describe("App", () => {
       screen.getByText("Private chats are not available for this role.")
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New chat" })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
     expect(screen.getByText("Upload is not available for this project role.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
     expect(screen.getAllByText("roadmap.md").length).toBeGreaterThan(0);
@@ -240,6 +244,7 @@ describe("App", () => {
     render(<App />);
 
     expect((await screen.findAllByText("Alpha Project")).length).toBeGreaterThan(0);
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
     fireEvent.change(screen.getByLabelText("Upload file"), {
       target: {
         files: [new File(["new"], "brief.md", { type: "text/markdown" })]
@@ -256,15 +261,467 @@ describe("App", () => {
       );
     });
   });
+
+  it("closes the workspace switcher with Escape and restores focus", async () => {
+    installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    const switcher = screen.getByRole("button", { name: "Switch project or workspace" });
+    fireEvent.click(switcher);
+    expect(switcher).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Alpha Project" })).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(switcher).toHaveAttribute("aria-expanded", "false");
+    expect(switcher).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "New workspace" })).not.toBeInTheDocument();
+  });
+
+  it.each([false, true])("moves focus into mobile navigation and restores it on Escape (viewer=%s)", async (viewer) => {
+    installFetch({ viewer });
+    render(<App />);
+    await screen.findByRole("button", { name: "Files · 1" });
+    const menu = screen.getByRole("button", { name: "Menu" });
+    fireEvent.click(menu);
+    expect(screen.getByRole("button", { name: viewer ? "Switch project or workspace" : "New chat" })).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(menu).toHaveFocus();
+    expect(menu).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("opens project files and returns focus to Files when Escape closes the drawer", async () => {
+    installFetch();
+    render(<App />);
+    const files = await screen.findByRole("button", { name: "Files · 1" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(files);
+    const drawer = screen.getByRole("dialog", { name: "Project Library" });
+    expect(drawer).toHaveAttribute("open");
+    expect(screen.getByRole("button", { name: "Close project files" })).toHaveFocus();
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(files).toHaveFocus();
+    expect(files).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows viewers a quiet view-only line and read-only library controls", async () => {
+    const fetchMock = installFetch({ viewer: true });
+    render(<App />);
+    expect(await screen.findByText("View only. You can browse files but not chat.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Message" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Attach files")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+    expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+    expect(screen.getByLabelText("Upload file")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/sessions"))).toBe(false);
+  });
+
+  it("explains a library loading error and lets Refresh retry it", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let unavailable = true;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (unavailable && String(input) === `/api/v1/projects/${projectId}/library/documents` && !init?.method) {
+        return jsonResponse({ error: { message: "Project files could not be loaded." } }, 503);
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Files · 0" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Project files could not be loaded.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Refresh project files to check the latest state before trying again.");
+    expect(screen.queryByText("No project files yet.")).not.toBeInTheDocument();
+    unavailable = false;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh project files" }));
+    await screen.findByRole("button", { name: "Files · 1" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download" })).toBeEnabled();
+  });
+
+  it("allows members to chat and upload while keeping deletion disabled", async () => {
+    const fetchMock = installFetch({ member: true });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+    expect(screen.getByRole("button", { name: "New chat" })).toBeEnabled();
+    expect(screen.getByLabelText("Upload file")).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Upload file"), {
+      target: { files: [new File(["new"], "brief.md", { type: "text/markdown" })] }
+    });
+    await screen.findByText("brief.md");
+    expect(screen.getByRole("button", { name: "Files · 2" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Delete" }).every((button) => button.hasAttribute("disabled"))).toBe(true);
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("refreshes and downloads project files through scoped library endpoints", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/library/documents/${documentId}/download`) {
+        return new Response("downloaded file", { headers: { "Content-Type": "text/markdown" } });
+      }
+      return originalFetch(input, init);
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    try {
+      render(<App />);
+      fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+      fireEvent.click(screen.getByRole("button", { name: "Refresh project files" }));
+      await waitFor(() => expect(fetchMock.mock.calls.filter(([input]) => String(input) === `/api/v1/projects/${projectId}/library/documents`)).toHaveLength(2));
+      fireEvent.click(screen.getByRole("button", { name: "Download" }));
+      await waitFor(() => expect(click).toHaveBeenCalledOnce());
+      expect(click.mock.instances[0]).toHaveAttribute("download", "roadmap.md");
+      expect(URL.createObjectURL).toHaveBeenCalledOnce();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:download");
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${projectId}/library/documents/${documentId}/download`, undefined);
+      expectNoLegacyRoutes(fetchMock);
+    } finally {
+      click.mockRestore();
+    }
+  });
+
+  it("creates a project with the optional description through the existing API", async () => {
+    const fetchMock = installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "New project" }));
+    expect(screen.getByLabelText("Project name")).toHaveFocus();
+    fireEvent.change(screen.getByLabelText("Project name"), { target: { value: "  Restricted Project  " } });
+    fireEvent.click(screen.getByText("Add a description (optional)"));
+    fireEvent.change(screen.getByLabelText("Project description"), { target: { value: "  Optional context  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Create project" }));
+    await screen.findByRole("heading", { name: "Restricted Project" });
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/organizations/${orgId}/projects`, expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ name: "Restricted Project", description: "Optional context" })
+    }));
+    expect(screen.queryByLabelText("Project name")).not.toBeInTheDocument();
+  });
+
+  it("keeps the workspace creation screen and name after a recoverable failure", async () => {
+    const fetchMock = installFetch({ emptyOrganizations: true });
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === "/api/v1/organizations" && init?.method === "POST") {
+        return jsonResponse({ error: { message: "Workspace creation is unavailable." } }, 503);
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    const name = await screen.findByLabelText("Organization name");
+    expect(name).toHaveFocus();
+    fireEvent.change(name, { target: { value: "Keep this workspace name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create org" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Workspace creation is unavailable.");
+    expect(screen.getByLabelText("Organization name")).toHaveValue("Keep this workspace name");
+    expect(screen.getByRole("button", { name: "Create org" })).toBeEnabled();
+  });
+
+  it("sends every selected attachment and keeps returned evidence and workflow details", async () => {
+    const fetchMock = installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    const files = [
+      new File(["first"], "first.txt", { type: "text/plain" }),
+      new File(["second"], "second.csv", { type: "text/csv" })
+    ];
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize both files" } });
+    fireEvent.change(screen.getByLabelText("Attach files"), { target: { files } });
+    expect(screen.getByText("first.txt (5 B)")).toBeInTheDocument();
+    expect(screen.getByText("second.csv (6 B)")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByText("Answer from project context.");
+    const submission = fetchMock.mock.calls.find(([input, init]) => String(input).endsWith("/messages") && init?.method === "POST");
+    const body = submission?.[1]?.body as FormData;
+    expect(body.get("message")).toBe("Summarize both files");
+    expect(body.getAll("files")).toEqual(files);
+    expect(screen.getAllByText("roadmap.md").length).toBeGreaterThan(0);
+    const detailToggles = screen.getAllByText("More details");
+    fireEvent.click(detailToggles[detailToggles.length - 1]);
+    fireEvent.click(screen.getByText("Workflow details"));
+    expect(screen.getByText("Project retrieval")).toBeVisible();
+    expect(screen.getByText("Used project library and chat attachments.")).toBeVisible();
+    expect(screen.getByLabelText("Message")).toHaveValue("");
+    expect(screen.queryByText("first.txt (5 B)")).not.toBeInTheDocument();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("shows a visible working message until the answer arrives", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let finish!: () => void;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input).endsWith("/messages") && init?.method === "POST") {
+        const response = await originalFetch(input, init);
+        return new Promise<Response>((resolve) => { finish = () => resolve(response); });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize the plan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Working on your answer…")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    await act(async () => { finish(); });
+    expect(await screen.findByText("Answer from project context.")).toBeVisible();
+    expect(screen.queryByText("Working on your answer…")).not.toBeInTheDocument();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it.each([false, true])("reveals only new answers progressively (skip=%s)", async (skip) => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    installFetch();
+    render(<App />);
+    expect(await screen.findByText("Budget review is complete.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show full answer" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize the plan" } });
+    vi.useFakeTimers();
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Send" })); });
+    const fullAnswer = screen.getByText("Answer from project context.");
+    expect(fullAnswer).toHaveClass("visuallyHidden");
+    const paragraph = fullAnswer.parentElement!;
+    const visualAnswer = paragraph.querySelector('[aria-hidden="true"]')!;
+    act(() => { vi.advanceTimersByTime(120); });
+    expect(visualAnswer.textContent!.length).toBeGreaterThan(0);
+    expect(visualAnswer.textContent!.length).toBeLessThan("Answer from project context.".length);
+    screen.getByRole("button", { name: "Show full answer" }).focus();
+    if (skip) {
+      fireEvent.click(screen.getByRole("button", { name: "Show full answer" }));
+      expect(paragraph).toHaveFocus();
+    } else {
+      act(() => { vi.advanceTimersByTime(2000); });
+    }
+    expect(paragraph).toHaveFocus();
+    expect(screen.getByText("Answer from project context.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show full answer" })).not.toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(screen.getByText("Answer from project context.")).toBeVisible();
+  });
+
+  it("shows new answers immediately when reduced motion is preferred", async () => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Summarize the plan" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Answer from project context.")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show full answer" })).not.toBeInTheDocument();
+  });
+
+  it("groups repeated chunks into unique documents and keeps page and line references", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      const response = await originalFetch(input, init);
+      if (String(input) === `/api/v1/projects/${projectId}/sessions/${sessionId}`) {
+        const evidence = [
+          { document_id: documentId, filename: "resume.pdf", chunk_id: "one", page_number: 1 },
+          { document_id: documentId, filename: "resume.pdf", chunk_id: "two", page_number: 2, line_start: 7, line_end: 12 },
+          { document_id: documentId, filename: "resume.pdf", chunk_id: "three", page_number: 2, line_start: 7, line_end: 12 },
+          { document_id: "another-document", filename: "resume.pdf", page_number: 3 },
+          { document_id: "no-location", filename: "notes.txt" }
+        ];
+        return jsonResponse({ ...sessionDetail, messages: [{ ...sessionDetail.messages[1], citations: evidence, sources: evidence }] });
+      }
+      return response;
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    const toggle = screen.getByText("More details");
+    const details = toggle.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByText("Documents used")).not.toBeVisible();
+    fireEvent.click(toggle);
+    expect(within(details).getAllByText("resume.pdf", { exact: false }).length).toBe(2);
+    expect(details.querySelectorAll(".evidenceDocuments li")).toHaveLength(3);
+    expect(details.querySelectorAll(".evidenceReferences li")).toHaveLength(4);
+    expect(within(details).getByText("Page 1", { exact: false })).toBeVisible();
+    expect(within(details).getByText("Page 2 · Lines 7–12", { exact: false })).toBeVisible();
+    expect(within(details).getByText("Page 3", { exact: false })).toBeVisible();
+    expect(within(details).getByText("Page and line details were not returned.", { exact: false })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Files · 1" })).toBeInTheDocument();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("creates a private chat with the existing session API", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    const created = { ...sessionSummary, id: "new-session", title: "New private chat" };
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/sessions` && init?.method === "POST") {
+        return jsonResponse(created, 201);
+      }
+      if (String(input) === `/api/v1/projects/${projectId}/sessions/${created.id}`) {
+        return jsonResponse({ ...created, messages: [] });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "New chat" }));
+    expect(await screen.findByText("No messages in this chat yet.")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${projectId}/sessions`, expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ title: null })
+    }));
+    expect(window.localStorage.getItem("rastin_ai.selectedSessionId")).toBe(created.id);
+    fireEvent.click(screen.getByRole("button", { name: /Untitled chat/ }));
+    expect(await screen.findByText("Budget review is complete.")).toBeInTheDocument();
+    expect(window.localStorage.getItem("rastin_ai.selectedSessionId")).toBe(sessionId);
+  });
+
+  it("renames a chat only after the project-scoped backend confirms the title", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let finish!: () => void;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/sessions/${sessionId}` && init?.method === "PATCH") {
+        return new Promise<Response>((resolve) => {
+          finish = () => resolve(jsonResponse({ ...sessionSummary, title: "CV languages" }));
+        });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Rename chat" }));
+    expect(screen.getByLabelText("Chat title")).toHaveFocus();
+    fireEvent.change(screen.getByLabelText("Chat title"), { target: { value: "  CV   languages  " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save title" }));
+    await waitFor(() => expect(finish).toBeTypeOf("function"));
+    expect(screen.getByRole("heading", { name: "Untitled chat" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /CV languages/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled();
+    await act(async () => { finish(); });
+    expect(screen.getByRole("heading", { name: "CV languages" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /CV languages/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Budget review is complete.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Rename chat" })).toHaveFocus();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${projectId}/sessions/${sessionId}`, expect.objectContaining({
+      method: "PATCH", body: JSON.stringify({ title: "CV   languages" })
+    }));
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it.each([403, 500])("keeps the saved title and edit draft when renaming fails (%s)", async (status) => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (init?.method === "PATCH") return jsonResponse({ error: { message: "Rename could not be saved." } }, status);
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Rename chat" }));
+    expect(screen.getByRole("button", { name: "Save title" })).toBeDisabled();
+    expect(screen.getByLabelText("Chat title")).toHaveAttribute("maxlength", "255");
+    fireEvent.change(screen.getByLabelText("Chat title"), { target: { value: "Keep this draft" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save title" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Rename could not be saved.");
+    expect(screen.getByRole("heading", { name: "Untitled chat" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Chat title")).toHaveValue("Keep this draft");
+    expect(screen.getByRole("button", { name: "Save title" })).toBeEnabled();
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("cancels chat renaming with Escape without sending a backend update", async () => {
+    const fetchMock = installFetch();
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Rename chat" }));
+    fireEvent.change(screen.getByLabelText("Chat title"), { target: { value: "Do not save this" } });
+    fireEvent.keyDown(screen.getByLabelText("Chat title"), { key: "Escape" });
+    expect(screen.queryByLabelText("Chat title")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Rename chat" })).toHaveFocus();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH")).toBe(false);
+  });
+
+  it("shows uploads confirmed by the backend even if a later file fails", async () => {
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    let uploads = 0;
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === `/api/v1/projects/${projectId}/library/documents` && init?.method === "POST") {
+        uploads += 1;
+        if (uploads === 2) return jsonResponse({ error: { message: "Second upload failed." } }, 500);
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole("button", { name: "Files · 1" }));
+    fireEvent.change(screen.getByLabelText("Upload file"), { target: { files: [
+      new File(["one"], "brief.md", { type: "text/markdown" }),
+      new File(["two"], "failed.md", { type: "text/markdown" })
+    ] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("Second upload failed.");
+    expect(screen.getByText("brief.md")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Files · 2" })).toBeInTheDocument();
+    expect(screen.queryByText("failed.md")).not.toBeInTheDocument();
+    expect(uploads).toBe(2);
+    expectNoLegacyRoutes(fetchMock);
+  });
+
+  it("switches projects and workspaces using the existing stored selections and scoped requests", async () => {
+    const otherOrg = { ...organization, id: "other-org", name: "Other workspace" };
+    const otherProject = { ...adminProject, id: "other-project", name: "Other project" };
+    const workspaceProject = { ...otherProject, id: "workspace-project", organization_id: otherOrg.id, name: "Workspace project" };
+    const fetchMock = installFetch();
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input, init) => {
+      const path = String(input);
+      if (path === "/api/v1/organizations" && !init?.method) {
+        return jsonResponse({ organizations: [organization, otherOrg] });
+      }
+      if (path === `/api/v1/organizations/${orgId}/projects` && !init?.method) {
+        return jsonResponse({ projects: [adminProject, otherProject] });
+      }
+      if (path === `/api/v1/organizations/${otherOrg.id}/projects` && !init?.method) {
+        return jsonResponse({ projects: [workspaceProject] });
+      }
+      if ([otherProject.id, workspaceProject.id].some((id) => path === `/api/v1/projects/${id}/sessions`)) {
+        return jsonResponse({ sessions: [] });
+      }
+      if ([otherProject.id, workspaceProject.id].some((id) => path === `/api/v1/projects/${id}/library/documents`)) {
+        return jsonResponse({ documents: [] });
+      }
+      return originalFetch(input, init);
+    });
+    render(<App />);
+    await screen.findByText("Budget review is complete.");
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Other project" }));
+    await waitFor(() => {
+      expect(window.localStorage.getItem("rastin_ai.selectedProjectId")).toBe(otherProject.id);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${otherProject.id}/sessions`, undefined);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Switch project or workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "Other workspace" }));
+    await screen.findByRole("heading", { name: "Workspace project" });
+    await waitFor(() => {
+      expect(window.localStorage.getItem("rastin_ai.selectedOrganizationId")).toBe(otherOrg.id);
+      expect(window.localStorage.getItem("rastin_ai.selectedProjectId")).toBe(workspaceProject.id);
+      expect(fetchMock).toHaveBeenCalledWith(`/api/v1/projects/${workspaceProject.id}/library/documents`, undefined);
+    });
+    expectNoLegacyRoutes(fetchMock);
+  });
 });
 
 function installFetch({
   emptyOrganizations = false,
+  member = false,
   messageFailure = false,
   projectCreateForbidden = false,
   viewer = false
 }: {
   emptyOrganizations?: boolean;
+  member?: boolean;
   messageFailure?: boolean;
   projectCreateForbidden?: boolean;
   viewer?: boolean;
@@ -285,7 +742,11 @@ function installFetch({
 
     if (path.endsWith("/projects") && method === "GET") {
       return jsonResponse({
-        projects: emptyOrganizations ? [] : [viewer ? viewerProject : adminProject]
+        projects: emptyOrganizations ? [] : [viewer ? viewerProject : member ? {
+          ...adminProject,
+          effective_role: "MEMBER",
+          permissions: ["projects.read", "documents.upload", "chats.create"]
+        } : adminProject]
       });
     }
 

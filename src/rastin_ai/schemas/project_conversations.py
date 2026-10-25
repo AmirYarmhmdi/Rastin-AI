@@ -18,6 +18,14 @@ class ProjectSessionCreateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=255)
 
 
+class ProjectSessionRenameRequest(BaseModel):
+    """Rename an existing private project chat."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=255)
+
+
 class ProjectMessageResponse(BaseModel):
     """One owner-authorized project chat message."""
 

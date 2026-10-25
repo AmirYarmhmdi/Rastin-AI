@@ -245,7 +245,10 @@ class SQLAlchemyWorkflowExecutionRepository:
     ) -> WorkflowExecutionRecord | None:
         result = await self._session.execute(
             select(WorkflowExecution)
-            .join(ConversationSession)
+            .join(
+                ConversationSession,
+                WorkflowExecution.session_id == ConversationSession.id,
+            )
             .where(
                 WorkflowExecution.id == workflow_id,
                 WorkflowExecution.user_id == user_id,

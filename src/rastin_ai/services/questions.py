@@ -226,20 +226,8 @@ class RAGQuestionAnsweringService:
                             "Project-scoped retrieval returned no relevant chunks."
                         ),
                     )
-                if _context_is_insufficient(scoped_question, context.text):
-                    return await self._complete_without_generation(
-                        workflow,
-                        status=QUESTION_STATUS_INSUFFICIENT_EVIDENCE,
-                        answer=(
-                            "The project returned evidence, but it is insufficient "
-                            "to answer the question reliably."
-                        ),
-                        message=(
-                            "Retrieved project evidence did not contain enough "
-                            "lexical support for the question."
-                        ),
-                        citations=citations,
-                    )
+                # Semantic matches can use different languages or wording. Let
+                # the grounded response generator assess the retrieved evidence.
             elif question_input.attachments:
                 context = self._retrieve_attachment_context(
                     scoped_question,

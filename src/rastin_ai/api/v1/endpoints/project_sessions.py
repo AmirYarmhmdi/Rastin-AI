@@ -20,6 +20,7 @@ from rastin_ai.schemas.project_conversations import (
     ProjectMessageSubmissionResponse,
     ProjectSessionCreateRequest,
     ProjectSessionListResponse,
+    ProjectSessionRenameRequest,
     ProjectSessionResponse,
     ProjectSessionSummaryResponse,
     ProjectWorkflowStatusResponse,
@@ -95,6 +96,26 @@ async def get_project_session(
 ) -> ProjectSessionResponse:
     session = await conversation_service.get_session(context, session_id)
     return _session_response(session)
+
+
+@router.patch(
+    "/{session_id}",
+    response_model=ProjectSessionSummaryResponse,
+    summary="Rename private project chat",
+)
+async def rename_project_session(
+    session_id: UUID,
+    request: ProjectSessionRenameRequest,
+    context: Annotated[ProjectAccessContext, Depends(get_project_access_context)],
+    conversation_service: Annotated[
+        ProjectConversationService,
+        Depends(get_project_conversation_service),
+    ],
+) -> ProjectSessionSummaryResponse:
+    session = await conversation_service.rename_session(
+        context, session_id, title=request.title
+    )
+    return _session_summary_response(session)
 
 
 @router.post(

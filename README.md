@@ -8,7 +8,7 @@
 
 Rastin-AI is an open-source AI orchestration platform for building document-aware agentic applications with production software engineering practices.
 
-The project is more than a chatbot. It combines a FastAPI backend, deterministic document-processing tools, retrieval-augmented generation, LangGraph workflow components, workflow persistence, observability hooks, evaluation tooling, and a small React client for submitting runs.
+The project is more than a chatbot. It combines a FastAPI backend, deterministic document-processing tools, retrieval-augmented generation, LangGraph workflow components, workflow persistence, observability hooks, evaluation tooling, and a React workspace for project libraries and private chats.
 
 The project follows a **Design First** approach: architecture, engineering principles, and ADRs live in `docs/` alongside the implementation.
 
@@ -16,7 +16,9 @@ The project follows a **Design First** approach: architecture, engineering princ
 
 - Upload and persist supported files: PDF, CSV, XLSX, DOCX, TXT, Markdown, and JSON
 - Submit natural language questions through API endpoints or the web client
-- Attach files to UI message submissions and persist their metadata
+- Create organizations (workspaces) and projects with role-based access
+- Manage project library files and private chats in the web client
+- Attach multiple files to a chat message and persist their metadata
 - Retrieve relevant document context with OpenAI embeddings and Qdrant
 - Build grounded answers with source metadata
 - Track workflow execution status and recent workflow runs
@@ -109,7 +111,7 @@ Agent modules under `src/rastin_ai/agent` provide planning, tool selection, dete
 ```text
 .
 |-- apps/
-|   `-- web/                       # React/Vite workflow client
+|   `-- web/                       # React/Vite project workspace client
 |-- src/
 |   `-- rastin_ai/
 |       |-- agent/                 # LangGraph-oriented agent components
@@ -290,7 +292,26 @@ uv run alembic upgrade head
 
 ## Web Client
 
-The web client lives in `apps/web`. It submits multipart message requests to the backend, supports file attachments, lists recent workflow runs, and opens workflow details.
+The [web client](apps/web/README.md) lives in `apps/web` and uses React, TypeScript,
+and Vite. A bottom sidebar switcher selects workspaces and projects and opens
+their creation screens. Project descriptions remain available through an optional
+disclosure.
+
+The sidebar lists private chats for the current project. Messages support multiple
+file attachments and display sources, citations, and workflow details when the
+backend returns them. The top-bar **Files · N** button opens the shared Project
+Library for upload, metadata, download, refresh, and deletion.
+
+Workspace owners have effective project admin access. Admins can upload and delete
+library files; members can upload and chat; viewers can browse and download files
+and see a quiet **View only** message. The client uses the existing
+organization/project-scoped API routes and remembers valid selections in browser
+localStorage.
+
+Light and dark themes follow the system preference. Figtree and the transparent
+lion mark are served from `apps/web/public/assets`, without runtime requests to
+Google Fonts. Mobile navigation, visible keyboard focus, reduced motion, and
+Escape-to-close behavior are supported.
 
 Start the backend first, then run the client:
 
@@ -308,6 +329,10 @@ Useful web commands:
 bun run test
 bun run build
 ```
+
+`bun run test` runs Vitest UI tests in jsdom; `bun run build` checks TypeScript
+and builds the production bundle. See the [frontend manual smoke-test checklist](apps/web/README.md#manual-smoke-test)
+for browser and live-backend verification.
 
 ## API Surface
 
@@ -561,8 +586,8 @@ Completed or in place:
 - RAG loaders, chunking, embeddings, Qdrant vector store, retrieval, and context builder
 - LangGraph-oriented agent components
 - Workflow persistence, status lookup, and recent-run APIs
-- UI message submission API with attachments
-- React/Vite workflow client
+- Project-scoped private chat and shared document-library APIs with attachments
+- React/Vite project workspace with minimal light/dark themes
 - Langfuse observability hooks
 - DeepEval and Ragas evaluation scaffolding
 
@@ -570,7 +595,7 @@ Planned next work:
 
 - Production dashboards and alerting
 - Larger golden datasets
-- Tenant/organization roles and sharing
+- Organization/project membership-management UI and richer sharing
 - Streaming responses
 - Richer artifact handling
 - Production Azure deployment hardening
@@ -581,7 +606,7 @@ Planned next work:
 
 ## Current Status
 
-This project is under active development. The backend, RAG infrastructure, agent components, workflow persistence, document-processing tools, local infrastructure, observability hooks, evaluation scaffolding, authentication/user ownership foundation, and web client are present. Remaining work is focused on operational hardening, production deployment, richer evaluation datasets, tenant/organization roles, streaming, and broader workflow capabilities.
+This project is under active development. The backend, RAG infrastructure, agent components, workflow persistence, document-processing tools, local infrastructure, observability hooks, evaluation scaffolding, authentication/user ownership foundation, organization/project access control, and project workspace client are present. Remaining work is focused on operational hardening, production deployment, richer evaluation datasets, membership-management UI, streaming, and broader workflow capabilities.
 
 ## License
 

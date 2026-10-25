@@ -109,6 +109,17 @@ export async function getProjectSession(
   );
 }
 
+export async function renameProjectSession(
+  projectId: string,
+  sessionId: string,
+  title: string
+): Promise<ProjectSessionSummary> {
+  return requestJson<ProjectSessionSummary>(
+    `/api/v1/projects/${projectId}/sessions/${sessionId}`,
+    { method: "PATCH", headers: JSON_HEADERS, body: JSON.stringify({ title }) }
+  );
+}
+
 export async function submitProjectMessage(
   projectId: string,
   sessionId: string,
