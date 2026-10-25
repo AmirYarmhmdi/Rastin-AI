@@ -49,7 +49,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "black",
-    "httpx",
+    "httpx2",
     "pre-commit",
     "pytest",
     "ruff",

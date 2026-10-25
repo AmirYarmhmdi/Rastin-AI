@@ -345,6 +345,10 @@ def e2e_runtime(monkeypatch, tmp_path: Path) -> Iterator[E2ERuntime]:
         _delete_qdrant_collection(TEST_QDRANT_URL, collection_name)
         _reset_database(TEST_DATABASE_URL)
         asyncio.run(_dispose_cached_engine())
+        # Monkeypatch restores the environment after this fixture exits. Do not
+        # leave cached E2E settings (including fake model credentials) behind
+        # for integration or LLM evaluation tests in the same pytest process.
+        _reset_app_modules()
 
 
 def test_upload_index_and_persisted_document_qa(e2e_runtime: E2ERuntime) -> None:

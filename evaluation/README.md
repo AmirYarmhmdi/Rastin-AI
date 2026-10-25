@@ -51,6 +51,30 @@ Cases may opt in to safe report text with `metadata.live.safe_report_text=true`.
 That flag is intended only for synthetic fixtures that contain no private,
 credential, or user-supplied content.
 
+### Why there are two datasets
+
+Both files use JSONL: each non-empty line is a separate JSON record. They have
+different roles, rather than representing DeepEval and Ragas separately:
+
+| Dataset | Cases | Where the answer comes from | What a run checks |
+| --- | --- | --- | --- |
+| `datasets/smoke.jsonl` | 2: context building and tool selection | Checked-in `actual_output` and `retrieved_contexts` | Scoring stored synthetic observations through an evaluator adapter. No runtime upload, retrieval, or answer generation occurs. |
+| `datasets/live_smoke.jsonl` | 6: context building, health endpoints, storage backends, cloud abstractions, unspecified retention, user isolation | The running application, using fixture documents in `metadata.live.documents` | Upload, indexing, retrieval, answer generation, and then evaluator scoring. |
+
+For example, the static ContextBuilder case already contains its answer. The
+live ContextBuilder case contains a Markdown document and a reference answer;
+the live runner must generate `actual_output` and `retrieved_contexts` itself.
+Changing application behavior does not regenerate the static file. Neither
+dataset is rewritten by an evaluation run.
+
+`expected_output` is a reference answer, `actual_output` is the answer being
+scored, `expected_contexts` are reference evidence, and `retrieved_contexts` are
+the evidence actually supplied to the answer generator. The metrics use
+different fields: answer relevancy compares `input` and `actual_output`,
+faithfulness compares `actual_output` with `retrieved_contexts`, and the
+hallucination metric compares `actual_output` with `expected_contexts`. A
+reference answer alone does not determine an answer relevancy score.
+
 ## Local Commands
 
 Validate the dataset without external API calls:
@@ -81,8 +105,36 @@ uv run --group evaluation python -m rastin_ai.evaluation ragas --dataset evaluat
 Run DeepEval regression tests:
 
 ```bash
-uv run --group evaluation pytest -m evaluation tests/evaluation
+uv run --group evaluation pytest -m evaluation tests/evaluation -v -s
 ```
+
+Each stored case is a separate pytest item, so a failed case does not prevent
+the other case from running. All three metrics run before its pass/fail check.
+The tests use `EVALUATION_MODEL`, `OPENAI_API_KEY`, and the configured
+`EVALUATION_*_THRESHOLD` settings. They print and save a report for each case at
+`evaluation-results/deepeval-smoke/<case-id>.json`. Reports contain the stored
+input/reference/answer/contexts, scores, thresholds, reasons, model name, and
+available extracted statements/claims/truths and verdicts. These detailed
+reports are intended for the checked-in synthetic fixtures; runtime evaluation
+keeps extracted document text out of metric diagnostics by default.
+
+The answer relevancy extraction prompt encodes the answer as a bounded JSON
+string. This avoids a reproduced DeepEval 4.1.7 issue where the default prompt's
+trailing `JSON:` label was extracted as an extra answer statement: two relevant
+claims plus that unrelated label yielded `2 / 3 = 0.6667`, below the unchanged
+`0.70` threshold. Content that really occurs inside an answer is preserved for
+scoring. LLM scoring can still vary between runs.
+
+To run the entire test suite with disposable PostgreSQL and Qdrant services:
+
+```bash
+bash scripts/run_e2e.sh tests
+```
+
+The default `bash scripts/run_e2e.sh` runs only the E2E folder. Its fixture
+models are deterministic doubles; they do not generate the live dataset's
+answers. The `live-deepeval` command below performs real model-backed runtime
+evaluation separately.
 
 Run the opt-in live runtime DeepEval path:
 
