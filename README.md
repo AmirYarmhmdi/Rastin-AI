@@ -333,6 +333,23 @@ bun run build
 `bun run test` runs Vitest UI tests in jsdom; `bun run build` checks TypeScript
 and builds the production bundle. See the [frontend manual smoke-test checklist](apps/web/README.md#manual-smoke-test)
 for browser and live-backend verification.
+## Application Screenshots
+
+### Project Workspace
+
+The web client provides a project-oriented workspace
+for managing private conversations and project resources.
+
+![Rastin-AI Project Workspace](docs/images/project-workspace.png)
+
+### Document-Grounded Question Answering
+
+Users can ask natural-language questions and receive
+answers grounded in retrieved document content.
+The interface exposes the documents used and retrieved
+source references for greater transparency.
+
+![Rastin-AI RAG Chat](docs/images/rag-chat-answer.png)
 
 ## API Surface
 
