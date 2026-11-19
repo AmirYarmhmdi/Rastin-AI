@@ -349,7 +349,7 @@ answers grounded in retrieved document content.
 The interface exposes the documents used and retrieved
 source references for greater transparency.
 
-![Rastin-AI RAG Chat](docs/images/rag-chat-answer.png)
+![Rastin-AI RAG Chat](docs/images/rag-chat-answer.jpg)
 
 ## API Surface
 
